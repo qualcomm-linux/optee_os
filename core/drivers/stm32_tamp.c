@@ -1244,7 +1244,8 @@ static void stm32_tamp_set_atper(uint32_t pins_out_bits, uint32_t *atcr1)
 		break;
 	}
 
-	*atcr1 |= (conf << _TAMP_ATCR1_ATPER_SHIFT) & _TAMP_ATCR1_ATPER_MASK;
+	*atcr1 |= SHIFT_U32(conf, _TAMP_ATCR1_ATPER_SHIFT) &
+		  _TAMP_ATCR1_ATPER_MASK;
 }
 
 static TEE_Result stm32_tamp_set_config(void)
