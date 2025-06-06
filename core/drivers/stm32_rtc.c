@@ -566,8 +566,10 @@ TEE_Result stm32_rtc_get_timestamp(struct optee_rtc_time *tm)
 
 	if (IO_READ32_POLL_TIMEOUT(base + RTC_SR, value,
 				   value & RTC_SR_TSF,
-				   10, TIMEOUT_US_RTC_GENERIC))
+				   10, TIMEOUT_US_RTC_GENERIC)) {
+		cpu_spin_unlock_xrestore(&rtc_dev.ts_lock, exceptions);
 		return TEE_ERROR_NO_DATA;
+	}
 
 	ssr = io_read32(base + RTC_TSSSR);
 	tr = io_read32(base + RTC_TSTR);
