@@ -34,6 +34,8 @@
 #define GENI_UART_REG_BASE		UL(0x994000)
 #define GCC_BASE			UL(0x100000)
 #define WPSS_BASE			UL(0x8a00000)
+#define TURING_BASE			UL(0x09800000)
+#define TURING_SIZE			ULL(0x00e00000)
 #endif
 
 #if defined(PLATFORM_FLAVOR_lemans)
@@ -50,5 +52,6 @@
 #endif
 
 #define PAS_ID_WPSS			6
+#define PAS_ID_TURING			18
 
 #endif /*PLATFORM_CONFIG_H*/
