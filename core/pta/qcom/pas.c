@@ -61,6 +61,11 @@ TEE_Result pas_get_resource_table(uint32_t pas_id, struct resource_table *rt,
 				   lpass_mem_res,
 				   LPASS_RESOURCE_TABLE_HEADER_SIZE,
 				   LPASS_RESOURCE_TABLE_SIZE);
+	case PAS_ID_VENUS:
+		return get_mem_rsc(rt, rt_size, &venus_rt, &venus_mem_hdr,
+				   venus_mem_res,
+				   VENUS_RESOURCE_TABLE_HEADER_SIZE,
+				   VENUS_RESOURCE_TABLE_SIZE);
 	default:
 		return TEE_ERROR_NOT_SUPPORTED;
 	}

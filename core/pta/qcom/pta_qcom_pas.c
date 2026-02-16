@@ -34,6 +34,12 @@ static struct qcom_pas_data lpass_dsp_data = {
 	.clk_group = QCOM_CLKS_LPASS,
 };
 
+static struct qcom_pas_data venus_fw_data = {
+	.pas_id = PAS_ID_VENUS,
+	.base.pa = IRIS_BASE,
+	.size = IRIS_SIZE,
+};
+
 static TEE_Result qcom_pas_is_supported(uint32_t pt,
 					TEE_Param params[TEE_NUM_PARAMS])
 {
@@ -49,6 +55,7 @@ static TEE_Result qcom_pas_is_supported(uint32_t pt,
 
 	if (params[0].value.a != PAS_ID_WPSS &&
 	    params[0].value.a != PAS_ID_QDSP6 &&
+	    params[0].value.a != PAS_ID_VENUS &&
 	    params[0].value.a != PAS_ID_TURING)
 		return TEE_ERROR_NOT_SUPPORTED;
 
@@ -88,6 +95,7 @@ static TEE_Result qcom_pas_init_image(uint32_t pt,
 
 	if (params[0].value.a != PAS_ID_WPSS &&
 	    params[0].value.a != PAS_ID_QDSP6 &&
+	    params[0].value.a != PAS_ID_VENUS &&
 	    params[0].value.a != PAS_ID_TURING)
 		return TEE_ERROR_NOT_SUPPORTED;
 
@@ -118,6 +126,9 @@ static TEE_Result qcom_pas_mem_setup(uint32_t pt,
 	case PAS_ID_QDSP6:
 		data = &lpass_dsp_data;
 		break;
+	case PAS_ID_VENUS:
+		data = &venus_fw_data;
+		break;
 	default:
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
@@ -144,6 +155,7 @@ static TEE_Result qcom_pas_get_resource_table(uint32_t pt,
 
 	if (params[0].value.a != PAS_ID_WPSS &&
 	    params[0].value.a != PAS_ID_TURING &&
+	    params[0].value.a != PAS_ID_VENUS &&
 	    params[0].value.a != PAS_ID_QDSP6)
 		return TEE_ERROR_NOT_SUPPORTED;
 
@@ -200,6 +212,11 @@ static TEE_Result qcom_pas_auth_and_reset(uint32_t pt,
 		}
 
 		return lpass_fw_start(&lpass_dsp_data);
+	case PAS_ID_VENUS:
+		if (!venus_fw_data.fw_base)
+			return TEE_ERROR_NO_DATA;
+
+		return venus_fw_start(&venus_fw_data);
 	default:
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
@@ -245,6 +262,8 @@ static TEE_Result qcom_pas_shutdown(uint32_t pt,
 		return compute_fw_shutdown(&turing_dsp_data);
 	case PAS_ID_QDSP6:
 		return lpass_fw_shutdown(&lpass_dsp_data);
+	case PAS_ID_VENUS:
+		return venus_fw_shutdown(&venus_fw_data);
 	default:
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
