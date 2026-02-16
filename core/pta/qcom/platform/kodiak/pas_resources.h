@@ -125,5 +125,25 @@ static struct resource_table lpass_rt = {
 	.offset[LPASS_NUM_MEM_RESOURCES - 1] = 0,
 };
 
+/*
+ * Venus
+ */
+static const struct fw_rsc_devmem venus_mem_res[] = {
+	{ .name = "video_mem", .flags = IOMMU_READ | IOMMU_WRITE,
+		.da = 0x8b200000, .pa = 0x8b200000, .len = 0x500000, },
+};
+
+static const struct fw_rsc_hdr venus_mem_hdr = {
+	.type = RSC_DEVMEM,
+};
+
+DEFINE_RESOURCE_TABLE(VENUS, ARRAY_SIZE(venus_mem_res));
+
+static struct resource_table venus_rt = {
+	.ver = 1,
+	.num = VENUS_NUM_MEM_RESOURCES,
+	.offset[VENUS_NUM_MEM_RESOURCES - 1] = 0,
+};
+
 #endif /* _PAS_RESOURCES_H_ */
 
