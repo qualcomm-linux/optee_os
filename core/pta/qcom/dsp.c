@@ -27,7 +27,10 @@ TEE_Result dsp_fw_start(struct qcom_pas_data *data,
 	io_write32(base + regs->xo_cbcr, 1);
 	io_write32(base + regs->sleep_cbcr, 1);
 
-	io_write32(base + regs->core_cbcr, 1);
+	if (data->pas_id == PAS_ID_TURING)
+		io_write32(base + regs->core_cbcr, 3);
+	else
+		io_write32(base + regs->core_cbcr, 1);
 
 	io_write32(base + regs->rst_evb, data->fw_base >> 4);
 	dsb();
