@@ -23,6 +23,7 @@
 #define GCC_WPSS_AHB_BDG_MST_CLK	0x9d158
 #define GCC_WPSS_RSCP_CLK		0x9d16c
 #define GCC_TURING_CFG_AHB_CLK		0x45028
+#define GCC_CFG_NOC_LPASS_CLK		0x47020
 
 /* Turing */
 #define TURING_CC_OFFSET			0x00800000
@@ -41,6 +42,10 @@
 #define VAPSS_GDS_HW_STATE_MASK			0x1E
 #define VAPSS_GDS_HW_STATE_SHIFT		1
 
+/* LPASS */
+#define LPASS_GDSC_OFFSET			0x01000000
+#define TOP_CC_LPI_Q6_AXIM_HS_CLK		0x4000
+#define TOP_CC_AGGNOC_MPU_LS_CLK		0x7000
 #else
 #error "Platform specific clock offsets not defined..."
 #endif
@@ -146,6 +151,19 @@ static int compute_cc_enable(void)
 	return 0;
 }
 
+static int lpass_gdsc_enable(void)
+{
+	struct io_pa_va gdsc_io = { .pa = LPASS_BASE + LPASS_GDSC_OFFSET };
+	vaddr_t gdsc_base = io_pa_or_va(&gdsc_io, 0xc000);
+	int res = 0;
+
+	res = clk_enable_cbc(gdsc_base + TOP_CC_AGGNOC_MPU_LS_CLK);
+	if (res)
+		return res;
+
+	return clk_enable_cbc(gdsc_base + TOP_CC_LPI_Q6_AXIM_HS_CLK);
+}
+
 TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 {
 	struct io_pa_va base = { .pa = GCC_BASE };
@@ -169,6 +187,14 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 		if (res)
 			goto timeout;
 		res = compute_cc_enable();
+		if (res)
+			goto timeout;
+		break;
+	case QCOM_CLKS_LPASS:
+		res = clk_enable_cbc(gcc_base + GCC_CFG_NOC_LPASS_CLK);
+		if (res)
+			goto timeout;
+		res = lpass_gdsc_enable();
 		if (res)
 			goto timeout;
 		break;
