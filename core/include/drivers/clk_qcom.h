@@ -14,9 +14,11 @@ enum qcom_clk_group {
 	QCOM_CLKS_WPSS,
 	QCOM_CLKS_TURING,
 	QCOM_CLKS_LPASS,
+	QCOM_CLKS_QFPROM,
 	QCOM_CLKS_MAX,
 };
 
 TEE_Result qcom_clock_enable(enum qcom_clk_group group);
+TEE_Result qcom_clock_disable(enum qcom_clk_group group);
 
 #endif /* _CLK_QCOM_H_ */
