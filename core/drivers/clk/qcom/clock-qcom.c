@@ -18,12 +18,18 @@
 #define CBCR_BRANCH_ENABLE_BIT  BIT(0)
 #define CBCR_BRANCH_OFF_BIT     BIT(31)
 
+#define CMD_RCGR_UPDATE_BIT     BIT(0)
+
 #if defined(PLATFORM_FLAVOR_kodiak)
 #define GCC_WPSS_AHB_CLK		0x9d154
 #define GCC_WPSS_AHB_BDG_MST_CLK	0x9d158
 #define GCC_WPSS_RSCP_CLK		0x9d16c
 #define GCC_TURING_CFG_AHB_CLK		0x45028
 #define GCC_CFG_NOC_LPASS_CLK		0x47020
+
+#define GCC_SEC_CTRL_CFG_RCGR		0x3d030
+#define GCC_SEC_CTRL_CMD_RCGR		0x3d02c
+#define QFPROM_CLOCK_DIVIDE		0x7
 
 /* Turing */
 #define TURING_CC_OFFSET			0x00800000
@@ -65,6 +71,33 @@ static int clk_enable_cbc(paddr_t cbcr)
 			return -1;
 		udelay(10);
 	} while (1);
+}
+
+static int clk_rcgr_update(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
+			   uint32_t cfg_value)
+{
+	uint64_t timer;
+
+	io_write32(cfg_rcgr, cfg_value);
+	io_write32(cmd_rcgr, CMD_RCGR_UPDATE_BIT);
+
+	timer = timeout_init_us(10 * 1000);
+	while (io_read32(cmd_rcgr) & CMD_RCGR_UPDATE_BIT) {
+		if (timeout_elapsed(timer))
+			return -1;
+		udelay(1);
+	}
+
+	return 0;
+}
+
+static int qfprom_clock_config(vaddr_t gcc_base, bool enable)
+{
+	vaddr_t cfg_rcgr = gcc_base + GCC_SEC_CTRL_CFG_RCGR;
+	vaddr_t cmd_rcgr = gcc_base + GCC_SEC_CTRL_CMD_RCGR;
+	uint32_t cfg_value = enable ? QFPROM_CLOCK_DIVIDE : 0;
+
+	return clk_rcgr_update(cfg_rcgr, cmd_rcgr, cfg_value);
 }
 
 static int compute_cc_enable(void)
@@ -198,6 +231,11 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 		if (res)
 			goto timeout;
 		break;
+	case QCOM_CLKS_QFPROM:
+		res = qfprom_clock_config(gcc_base, true);
+		if (res)
+			goto timeout;
+		break;
 	default:
 		EMSG("Unsupported clock group %d\n", group);
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -208,4 +246,27 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 timeout:
 	EMSG("Timeout trying to enable clock group %d\n", group);
 	return TEE_ERROR_TIMEOUT;
+}
+
+TEE_Result qcom_clock_disable(enum qcom_clk_group group)
+{
+	struct io_pa_va base = { .pa = GCC_BASE };
+	vaddr_t gcc_base = io_pa_or_va(&base, 0x100000);
+	int res = 0;
+
+	switch (group) {
+	case QCOM_CLKS_QFPROM:
+		res = qfprom_clock_config(gcc_base, false);
+		if (res) {
+			EMSG("Timeout trying to disable clock group %d\n",
+			     group);
+			return TEE_ERROR_TIMEOUT;
+		}
+		break;
+	default:
+		EMSG("Unsupported clock group %d\n", group);
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	return TEE_SUCCESS;
 }
