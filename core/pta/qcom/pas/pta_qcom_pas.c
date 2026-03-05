@@ -17,6 +17,7 @@
 static struct qcom_pas_data wpss_dsp_data = {
 	.pas_id = PAS_ID_WPSS,
 	.base.pa = WPSS_BASE,
+	.size = CORE_MMU_PGDIR_SIZE,
 	.clk_group = QCOM_CLKS_WPSS,
 };
 
@@ -136,6 +137,13 @@ static TEE_Result qcom_pas_mem_setup(uint32_t pt,
 	data->fw_size = params[0].value.b;
 	data->fw_base = params[1].value.a;
 	data->fw_base |= ((paddr_t)params[1].value.b << 32);
+
+	/* Map the controller */
+	data->base.va = (vaddr_t)core_mmu_add_mapping(MEM_AREA_IO_NSEC,
+						      data->base.pa,
+						      data->size);
+	if (!data->base.va)
+		return TEE_ERROR_GENERIC;
 
 	return TEE_SUCCESS;
 }
