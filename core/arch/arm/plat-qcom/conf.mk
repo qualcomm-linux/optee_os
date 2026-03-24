@@ -34,6 +34,15 @@ endif
 ifneq (,$(filter $(PLATFORM_FLAVOR),kodiak))
 CFG_DRIVERS_CLK ?= y
 CFG_QCOM_PAS_PTA ?= y
+
+# QFPROM Fuse Provisioning: disabled in insecure mode, enabled otherwise
+CFG_QCOM_QFPROM_FUSEPROV ?= $(if $(filter y,$(CFG_INSECURE)),n,y)
+
+# QFPROM dependencies: all enabled/disabled together based on FUSEPROV
+_qcom_fuseprov_deps = $(if $(filter y,$(CFG_QCOM_QFPROM_FUSEPROV)),y,n)
+CFG_QCOM_CMD_DB ?= $(_qcom_fuseprov_deps)
+CFG_QCOM_RPMH_CLIENT ?= $(_qcom_fuseprov_deps)
+CFG_QCOM_QFPROM ?= $(_qcom_fuseprov_deps)
 endif
 
 ifeq ($(CFG_QCOM_PAS_PTA),y)
@@ -41,4 +50,3 @@ ifeq ($(CFG_QCOM_PAS_PTA),y)
 CFG_RESERVED_VASPACE_SIZE ?= (60 * 1024 * 1024)
 $(call force,CFG_DRIVERS_QCOM_CLK,y,Mandated by CFG_QCOM_PAS)
 endif
-
