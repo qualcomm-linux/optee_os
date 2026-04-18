@@ -7,6 +7,7 @@
 #define __QFPROM_PRIV_H__
 
 #include <drivers/qcom/qfprom/qfprom.h>
+#include <qfprom_target.h>
 #include <kernel/mutex.h>
 #include <mm/core_mmu.h>
 
