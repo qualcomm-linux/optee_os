@@ -404,7 +404,8 @@ TEE_Result qfprom_hw_init(void)
 	return TEE_SUCCESS;
 
 err_disable_voltage:
-	qfprom_disable_voltage();
+	if (qfprom_disable_voltage() != TEE_SUCCESS)
+		EMSG("Failed to disable voltage");
 err_unlock:
 	mutex_unlock(&drv->lock);
 	qfprom_release_hw_mutex();
@@ -417,7 +418,8 @@ void qfprom_hw_deinit(void)
 
 	drv->write_op_allowed = false;
 	qfprom_write_reset_clock_settings();
-	qfprom_disable_voltage();
+	if (qfprom_disable_voltage() != TEE_SUCCESS)
+		EMSG("Failed to disable voltage");
 	mutex_unlock(&drv->lock);
 	qfprom_release_hw_mutex();
 }
