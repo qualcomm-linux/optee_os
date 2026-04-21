@@ -244,7 +244,7 @@ enum hal_status hal_rpmh_update_epcb_timeout(enum rscsw_drv_mapping drv_id,
 	vaddr_t base;
 	uint32_t val;
 
-	if (drv_id != RSC_DRV_TZ)
+	if (drv_id != RSC_DRV_SECURE)
 		return HAL_STATUS_INVALID_PARAM;
 
 	base = get_drv_base(drv_id);
@@ -266,7 +266,7 @@ enum hal_status hal_rpmh_toggle_epcb_timeout(enum rscsw_drv_mapping drv_id,
 	vaddr_t base;
 	uint32_t val;
 
-	if (drv_id != RSC_DRV_TZ)
+	if (drv_id != RSC_DRV_SECURE)
 		return HAL_STATUS_INVALID_PARAM;
 
 	base = get_drv_base(drv_id);

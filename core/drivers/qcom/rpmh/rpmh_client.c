@@ -365,18 +365,7 @@ void rpmh_barrier_single(struct rpmh_client *handle, uint32_t req_id)
 
 bool rpmh_is_drv_id_valid(enum rscsw_drv_mapping drv_id)
 {
-	switch (drv_id) {
-	case RSC_DRV_TZ:
-	case RSC_DRV_CPUCP:
-	case RSC_DRV_HLOS:
-	case RSC_DRV_HYP:
-		return true;
-	default:
-		if (drv_id >= RSC_DRV_VIRTUAL_DRVS &&
-		    drv_id <= RSC_DRV_VIRTUAL_MAX)
-			return true;
-		return false;
-	}
+	return (drv_id == RSC_DRV_SECURE);
 }
 
 early_init(rpmh_client_init);

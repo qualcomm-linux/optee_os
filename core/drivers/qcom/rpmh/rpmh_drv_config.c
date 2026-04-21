@@ -23,8 +23,8 @@ static const struct drv_config_data optee_config_data = {
 
 	.drvs = (struct drv_config[]) {
 		{
-			.drv_id = RSC_DRV_TZ,
-			.hw_drv = RSC_DRV_TZ,
+			.drv_id = RSC_DRV_SECURE,
+			.hw_drv = RSC_DRV_SECURE,
 			.wake_set_latency = 0x7080,
 			.tcs_offset = 0,
 			.tcs = RPMH_TCS_ACTIVE + RPMH_TCS_SLEEP + RPMH_TCS_WAKE,

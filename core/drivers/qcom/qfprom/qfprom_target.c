@@ -70,7 +70,7 @@ TEE_Result qfprom_enable_voltage(void)
 	uint32_t req_id;
 
 	if (!rpmh_handle) {
-		rpmh_handle = rpmh_create_handle(RSC_DRV_TZ, "qfprom");
+		rpmh_handle = rpmh_create_handle(RSC_DRV_SECURE, "qfprom");
 		if (!rpmh_handle) {
 			EMSG("RPMH client creation failed");
 			return TEE_ERROR_GENERIC;
