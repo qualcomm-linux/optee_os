@@ -20,7 +20,7 @@ enum rpmh_set_enum {
 };
 
 enum rscsw_drv_mapping {
-	RSC_DRV_TZ            = 0,
+	RSC_DRV_SECURE        = 0,
 	RSC_DRV_CPUCP         = 1,
 	RSC_DRV_L3            = RSC_DRV_CPUCP,
 	RSC_DRV_HLOS          = 2,
