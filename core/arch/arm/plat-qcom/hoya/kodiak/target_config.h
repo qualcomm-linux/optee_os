@@ -43,4 +43,7 @@
 #define PAS_ID_VENUS			9
 #define PAS_ID_TURING			18
 
+#define HWKM_MASTER_BASE	        UL(0x010c0000)
+#define HWKM_MASTER_SIZE	        UL(0x00020000)
+
 #endif /* TARGET_CONFIG_H */

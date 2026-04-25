@@ -9,3 +9,5 @@ _qcom_fuseprov_deps = $(if $(filter y,$(CFG_QCOM_QFPROM_FUSEPROV)),y,n)
 CFG_QCOM_CMD_DB ?= $(_qcom_fuseprov_deps)
 CFG_QCOM_RPMH_CLIENT ?= $(_qcom_fuseprov_deps)
 CFG_QCOM_QFPROM ?= $(_qcom_fuseprov_deps)
+
+CFG_QCOM_HWKM ?= y

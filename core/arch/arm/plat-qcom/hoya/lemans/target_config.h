@@ -29,4 +29,7 @@
 #define IMEM_BASE			UL(0x14680000)
 #define IMEM_SIZE			UL(0x32000)
 
+#define HWKM_MASTER_BASE	        UL(0x010c0000)
+#define HWKM_MASTER_SIZE	        UL(0x00020000)
+
 #endif /* TARGET_CONFIG_H */
