@@ -1,3 +1,5 @@
 global-incdirs-y += .
+global-incdirs-y += $(QCOM_ARCH_FAMILY)
+global-incdirs-y += $(QCOM_ARCH_FAMILY)/$(PLATFORM_FLAVOR)
 srcs-y += main.c
 srcs-y += diag_log.c
