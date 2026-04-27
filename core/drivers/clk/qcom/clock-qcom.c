@@ -34,6 +34,24 @@ TEE_Result qcom_clock_enable_cbc(vaddr_t cbcr)
 	return TEE_SUCCESS;
 }
 
+TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
+			       uint32_t cfg_value)
+{
+	uint64_t timer = 0;
+
+	io_write32(cfg_rcgr, cfg_value);
+	io_write32(cmd_rcgr, CMD_RCGR_UPDATE_BIT);
+
+	timer = timeout_init_us(10 * 1000);
+	while (io_read32(cmd_rcgr) & CMD_RCGR_UPDATE_BIT) {
+		if (timeout_elapsed(timer))
+			return TEE_ERROR_TIMEOUT;
+		udelay(1);
+	}
+
+	return TEE_SUCCESS;
+}
+
 TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 {
 	switch (group) {
@@ -45,6 +63,4 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 		EMSG("Unsupported clock group %d\n", group);
 		return TEE_ERROR_BAD_PARAMETERS;
 	}
-
-	return TEE_SUCCESS;
 }
