@@ -16,6 +16,7 @@ unexport MAKEFILE_LIST
 
 # Automatically delete corrupt targets (file updated but recipe exits with a
 # nonzero status). Useful since a few recipes use shell redirection.
+# adding other comment
 .DELETE_ON_ERROR:
 
 include mk/macros.mk
