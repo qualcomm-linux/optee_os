@@ -3,7 +3,6 @@
 PLATFORM_FLAVOR ?= kodiak
 
 $(call force,CFG_GIC,y)
-$(call force,CFG_ARM_GICV3,y)
 $(call force,CFG_SECURE_TIME_SOURCE_CNTPCT,y)
 $(call force,CFG_ARM64_core,y)
 $(call force,CFG_WITH_ARM_TRUSTED_FW,y)
@@ -24,13 +23,16 @@ supported-ta-targets ?= ta_arm64
 
 # Architecture family mapping
 HOYA_ARCH_CHIPSETS := kodiak lemans
+BOBCAT_ARCH_CHIPSETS := ipq96xx
 
 ifneq (,$(filter $(PLATFORM_FLAVOR),$(HOYA_ARCH_CHIPSETS)))
 QCOM_ARCH_FAMILY := hoya
+else ifneq (,$(filter $(PLATFORM_FLAVOR),$(BOBCAT_ARCH_CHIPSETS)))
+QCOM_ARCH_FAMILY := bobcat
 else
 $(error Unsupported PLATFORM_FLAVOR: $(PLATFORM_FLAVOR))
 endif
 
-# Include architecture-specific configuration
-include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/arch.mk
-include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/$(PLATFORM_FLAVOR)/target.mk
+# Include architecture-specific configurations
+-include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/arch.mk
+-include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/$(PLATFORM_FLAVOR)/target.mk
