@@ -14,6 +14,7 @@
 #define RNG_STATUS				0x4
 #define RNG_STATUS_DATA_AVAIL_BMSK		0x1
 
+#define RNG_REG_SIZE				0x1000
 #define RNG_TIMEOUT_US				1000000
 
 static struct {
