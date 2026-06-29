@@ -26,6 +26,17 @@
 
 #define GENI_UART_REG_BASE		UL(0xa8c000)
 
+/* TLMM — from msmhwiobase.h and GPIOLemans.c */
+#define TLMM_BASE			UL(0x0f000000)
+#define TLMM_BASE_SIZE			UL(0x01000000)
+
+#ifdef CFG_QCOM_TLMM
+#ifndef __ASSEMBLER__
+#include <drivers/qcom/tlmm/tlmm.h>
+extern const struct tlmm_desc tlmm_soc_desc;
+#endif
+#endif
+
 #define TURING_0_BASE			UL(0x24000000)
 #define TURING_0_SIZE			UL(0x03000000)
 
