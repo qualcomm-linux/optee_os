@@ -14,3 +14,7 @@ CFG_TEE_RAM_VA_SIZE ?= 0x200000
 CFG_TA_RAM_VA_SIZE ?= 0x1c00000
 CFG_TZDRAM_SIZE ?= (CFG_TEE_RAM_VA_SIZE + CFG_TA_RAM_VA_SIZE)
 CFG_NUM_THREADS ?= 8
+
+# OP-TEE re-verifies each loaded PIL firmware segment against the image's
+# hash table before releasing the peripheral from reset.
+CFG_QCOM_PAS_HASH_VERIFY ?= y
