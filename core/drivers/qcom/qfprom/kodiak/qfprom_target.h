@@ -17,6 +17,93 @@
 #define QFPROM_CORR_BASE                        0x00784000
 #define QFPROM_SIZE                             0x4000
 
+/*
+ * SECURE_BOOTn secure-control register array holding the per-code-segment
+ * AUTH_EN, PK_HASH_IN_FUSE and USE_SERIAL_NUM bits. Authentication is
+ * required when AUTH_EN is blown; the root-of-trust anchor lives in the
+ * PK_HASH_0 fuse rather than a ROM constant when PK_HASH_IN_FUSE is blown.
+ * The APPS code segment is index 1 within the array.
+ */
+#define SECURE_BOOT_APPS_ADDR			(SECURITY_CONTROL_BASE + 0x607c)
+#define SECURE_BOOT_AUTH_EN_BMSK		0x20
+#define SECURE_BOOT_USE_SERIAL_NUM_BMSK		0x40
+#define SECURE_BOOT_PK_HASH_IN_FUSE_BMSK	0x10
+
+/*
+ * Size of the OEM root-of-trust digest stored in the PK_HASH_0 fuse region.
+ * SHA-384 (48 bytes) on this platform, matching the secure-boot ROM.
+ */
+#define QFPROM_ROOT_OF_TRUST_BYTE_SIZE		48
+
+/*
+ * PIL subsystem anti-rollback fuse layout (kodiak).
+ *
+ * EN bit: OEM_CONFIG_ROW2_MSB[2] (corrected addr 0x7841D4, mask 0x4).
+ * PIL_SUBSYSTEM0 (LSB, bits 31:0):  ANTI_ROLLBACK_2 corrected 0x784228.
+ * PIL_SUBSYSTEM1 (MSB, bits 47:32): ANTI_ROLLBACK_3 corrected 0x784230,
+ *                                   mask 0xffff00 (bits 23:8, 16 bits used).
+ * Device version = popcount(LSB) only (kodiak counts only the LSB fuse
+ *                   bank, unlike lemans which also counts an MSB bank).
+ */
+#define PIL_ARB_EN_CORR_ADDR			(QFPROM_CORR_BASE + 0x01D4)
+#define PIL_ARB_EN_BMSK				0x00000004
+#define PIL_ARB_LSB_CORR_ADDR			(QFPROM_CORR_BASE + 0x0228)
+#define PIL_ARB_LSB_BMSK			0xffffffff
+#define PIL_ARB_MSB_CORR_ADDR			(QFPROM_CORR_BASE + 0x0230)
+#define PIL_ARB_MSB_BMSK			0x00ffff00
+/* kodiak counts only the LSB fuse bank; no MSB bank is used */
+#define PIL_ARB_MSB_ENABLED			0
+/* Raw row for blowing the ARB fuse (ANTI_ROLLBACK_2). */
+#define PIL_ARB_RAW_ADDR			(QFPROM_RAW_BASE + 0x0228)
+/* Max unary-encoded versions per bank (LSB = 32 bits; MSB not counted). */
+#define PIL_ARB_LSB_MAX_VERSION			32
+#define PIL_ARB_MSB_MAX_VERSION			0
+
+/*
+ * Device-identity sense registers in the SECURITY_CONTROL block (hardware
+ * shadow of the underlying OEM_CONFIG / PTE fuse rows). Same offsets on
+ * lemans and kodiak. Used to bind signed image metadata to this device.
+ */
+#define OEM_ID_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6138)
+#define OEM_ID_BMSK				0xffff0000
+#define OEM_ID_SHFT				16
+#define MODEL_ID_BMSK				0x0000ffff
+#define MODEL_ID_SHFT				0
+#define JTAG_ID_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6130)
+#define JTAG_ID_AUTH_BMSK			0x0fffffff
+#define SERIAL_NUM_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6134)
+
+/*
+ * SOC hardware version lives in a TCSR register (not a fuse). The metadata
+ * soc_vers binding compares against the family|device field (bits 31:16).
+ */
+#define TCSR_SOC_HW_VERSION_ADDR		0x01FC8000
+#define SOC_HW_VERSION_FAM_DEV_BMSK		0xffff0000
+#define SOC_HW_VERSION_FAM_DEV_SHFT		16
+
+/*
+ * OEM_CONFIG2 fuse register (SECURITY_CONTROL block), holding the
+ * EKU_ENFORCEMENT_EN bit (same offset/bit as lemans). kodiak has no
+ * OEM_CONFIG2 segment-hash-select fuse field (unlike lemans); segments are
+ * always hashed with SHA-384. See lemans/qfprom_target.h.
+ */
+#define OEM_CONFIG2_ADDR			(SECURITY_CONTROL_BASE + 0x6054)
+#define EKU_ENFORCEMENT_EN_SHFT			30
+#define SEGMENT_HASH_SELECT_SUPPORTED		0
+
+/*
+ * Multiple-root-certificate (MRC) fuse fields (SECURITY_CONTROL sense
+ * registers). OEM_CONFIG0 ROOT_CERT_TOTAL_NUM holds (number of provisioned
+ * root certificates - 1); the activation/revocation lists are 4-bit fields,
+ * one bit per root index.
+ */
+#define OEM_CONFIG0_ADDR			(SECURITY_CONTROL_BASE + 0x604c)
+#define ROOT_CERT_TOTAL_NUM_BMSK		0x00060000
+#define ROOT_CERT_TOTAL_NUM_SHFT		17
+#define MRC_ACTIVATION_LIST_ADDR		(SECURITY_CONTROL_BASE + 0x6250)
+#define MRC_REVOCATION_LIST_ADDR		(SECURITY_CONTROL_BASE + 0x6258)
+#define MRC_ROOT_CERT_LIST_BMSK			0x0000000f
+
 #define QFPROM_BLOW_TIMER_OFFSET                0x203c
 #define QFPROM_ACCEL_OFFSET                     0x2044
 
