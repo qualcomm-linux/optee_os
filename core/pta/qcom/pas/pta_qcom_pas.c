@@ -10,6 +10,7 @@
 #include <platform_pas.h>
 #include <pta_qcom_pas.h>
 #include <string.h>
+#include <util.h>
 
 #define PTA_NAME	"pta.qcom.pas"
 
@@ -143,6 +144,50 @@ qcom_pas_shutdown(uint32_t pt,
 	return pas_platform_shutdown(params[0].value.a);
 }
 
+#ifdef CFG_QCOM_PAS_HASH_VERIFY
+static TEE_Result
+qcom_pas_verify_image(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_VALUE_INPUT);
+	/*
+	 * params[2].memref: packed [metadata | hash_table] buffer
+	 * params[3].value.a: hash_size
+	 * params[3].value.b: metadata_size (= offset of hash_table in buf)
+	 */
+	const uint8_t *buf = NULL;
+	size_t metadata_size = 0;
+	size_t hash_table_size = 0;
+	paddr_t fw_base = 0;
+
+	if (pt != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[2].memref.buffer || !params[2].memref.size)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	metadata_size = params[3].value.b;
+	if (!metadata_size || metadata_size >= params[2].memref.size)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	buf = params[2].memref.buffer;
+	hash_table_size = params[2].memref.size - metadata_size;
+
+	fw_base = reg_pair_to_64(params[1].value.b, params[1].value.a);
+
+	DMSG("invoked with pas_id: %d md=%zu ht=%zu",
+	     params[0].value.a, metadata_size, hash_table_size);
+
+	return pas_platform_verify_image(params[0].value.a, params[0].value.b,
+					 fw_base,
+					 buf, metadata_size,
+					 buf + metadata_size, hash_table_size,
+					 params[3].value.a);
+}
+#endif /* CFG_QCOM_PAS_HASH_VERIFY */
+
 static TEE_Result pta_qcom_pas_invoke_command(void *session __unused,
 					      uint32_t cmd_id,
 					      uint32_t param_types,
@@ -165,6 +210,10 @@ static TEE_Result pta_qcom_pas_invoke_command(void *session __unused,
 		return qcom_pas_set_remote_state(param_types, params);
 	case PTA_QCOM_PAS_SHUTDOWN:
 		return qcom_pas_shutdown(param_types, params);
+#ifdef CFG_QCOM_PAS_HASH_VERIFY
+	case PTA_QCOM_PAS_VERIFY_IMAGE:
+		return qcom_pas_verify_image(param_types, params);
+#endif
 	default:
 		return TEE_ERROR_NOT_IMPLEMENTED;
 	}
