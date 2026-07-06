@@ -18,3 +18,7 @@ CFG_NUM_THREADS ?= 8
 # OP-TEE re-verifies each loaded PIL firmware segment against the image's
 # hash table before releasing the peripheral from reset.
 CFG_QCOM_PAS_HASH_VERIFY ?= y
+
+# Authenticate each image's certificate chain and signature, and bind it to
+# its peripheral and device, before trusting its hash table.
+CFG_QCOM_PAS_SECURE_BOOT ?= y
