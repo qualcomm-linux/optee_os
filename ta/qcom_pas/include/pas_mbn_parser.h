@@ -29,9 +29,8 @@
  * Hash table: one digest per ELF program header; entry 0 = digest of the ELF
  * header plus program-header table, entry i = digest of the segment at phdr i.
  *
- * This file extracts the hash table. The OEM/QTI metadata, signature and
- * certificate regions are located and reported below, but nothing consumes
- * them yet.
+ * This file extracts the hash table; OEM/QTI metadata, signature and
+ * certificate regions are pas_meta.h's concern.
  */
 
 #define PAS_MBN_VERSION_5	5

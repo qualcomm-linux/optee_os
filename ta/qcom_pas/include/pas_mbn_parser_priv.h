@@ -11,8 +11,9 @@
 #include <tee_api_types.h>
 
 /*
- * MBN hash-segment binary-format primitives, used by pas_mbn_parser.c for
- * segment location and hash-table extraction.
+ * MBN hash-segment binary-format primitives, shared between
+ * pas_mbn_parser.c (segment location + hash table) and pas_meta.c
+ * (OEM/QTI metadata, signature and certificate regions).
  */
 
 /* MBN header field offsets (bytes from hash-segment start) */
