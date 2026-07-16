@@ -18,7 +18,7 @@
  * struct pas_auth_core_ctx - per-segment hash verification context
  * @hash_algo:      TEE_ALG_SHA256 or TEE_ALG_SHA384
  * @hash_size:      digest size in bytes (32 or 48)
- * @hash_table:     per-segment digest table, one entry per program header
+ * @hash_table:     authenticated digest table, one entry per program header
  * @num_entries:    number of digests; must equal e_phnum
  * @metadata:       raw MBN metadata blob: ELF header + phdrs + hash segment;
  *                  used for ELF parsing and entry-0 hash (NOT loaded into fw)

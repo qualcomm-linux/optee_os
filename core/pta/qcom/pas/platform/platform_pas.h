@@ -44,8 +44,8 @@ struct pas_metadata {
 };
 
 /*
- * struct pas_hash_table - per-segment digest table, one entry per program
- * header. Supplied by the caller and not authenticated here.
+ * struct pas_hash_table - authenticated per-segment digest table, one entry
+ * per program header.
  * @table:      digest table
  * @len:        size of @table in bytes
  * @entry_size: digest size in bytes (32 for SHA-256, 48 for SHA-384)
@@ -57,12 +57,10 @@ struct pas_hash_table {
 };
 
 /*
- * Verify the integrity of a loaded firmware image against @hash. Maps
- * @fw, recomputes each segment digest and compares it to the table, then
- * unmaps.
- *
- * TODO: authenticating the hash table itself (certificate chain and
- * signature) will be added incrementally.
+ * Verify the integrity of a loaded firmware image against an authenticated
+ * @hash. Maps @fw, recomputes each segment digest and compares it to the
+ * table, then unmaps. The table must have already been authenticated
+ * (signature-verified) by the caller.
  */
 #ifdef CFG_QCOM_PAS_AUTH
 TEE_Result pas_platform_verify_image(uint32_t pas_id,

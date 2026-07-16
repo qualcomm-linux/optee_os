@@ -4,6 +4,7 @@
  */
 
 #include <pas_auth.h>
+#include <pas_fuse.h>
 #include <pta_qcom_pas.h>
 #include <qcom_pas_priv.h>
 #include <ta_qcom_pas.h>
@@ -111,6 +112,12 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t pt,
 					&pta_session, NULL);
 		if (res != TEE_SUCCESS)
 			goto error_free;
+
+		res = pas_fuse_open();
+		if (res != TEE_SUCCESS) {
+			TEE_CloseTASession(pta_session);
+			goto error_free;
+		}
 	}
 
 	session_refcount++;
@@ -143,8 +150,10 @@ void TA_CloseSessionEntryPoint(void *sess_ctx)
 
 	session_refcount--;
 
-	if (!session_refcount)
+	if (!session_refcount) {
+		pas_fuse_close();
 		TEE_CloseTASession(pta_session);
+	}
 }
 
 TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx, uint32_t cmd_id,
