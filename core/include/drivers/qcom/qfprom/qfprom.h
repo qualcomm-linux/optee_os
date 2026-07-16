@@ -36,6 +36,115 @@ TEE_Result qfprom_read_row(uint32_t addr,
 			   enum qfprom_addr_space type,
 			   uint32_t *data);
 
+/*
+ * Report whether secure boot (image authentication) is enabled for the APPS
+ * code segment, i.e. whether the SECURE_BOOT AUTH_EN fuse is blown.
+ *
+ * @enabled: set to true if secure boot is enabled, false otherwise
+ *
+ * Return TEE_SUCCESS on success or an error if the state cannot be read.
+ */
+TEE_Result qcom_secboot_is_enabled(bool *enabled);
+
+/*
+ * Report whether the APPS SECURE_BOOTn USE_SERIAL_NUM fuse override is
+ * blown. When set, serial-number binding is forced regardless of the
+ * image metadata's own serial-number-binding flag.
+ *
+ * @enabled: set to true if the override is blown, false otherwise
+ *
+ * Return TEE_SUCCESS on success or an error if the state cannot be read.
+ */
+TEE_Result qcom_secboot_get_use_serial_num(bool *enabled);
+
+/*
+ * Read the OEM root-of-trust digest from the PK_HASH_0 fuse region. This is
+ * the hash the secure-boot ROM compares the firmware signing root certificate
+ * against. It is QFPROM_ROOT_OF_TRUST_BYTE_SIZE (48 bytes, SHA-384) on the
+ * supported platforms.
+ *
+ * @hash: output buffer for the digest
+ * @len:  size of @hash; must equal QFPROM_ROOT_OF_TRUST_BYTE_SIZE
+ *
+ * Return TEE_SUCCESS on success or an error if the value cannot be read.
+ */
+TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len);
+
+/*
+ * Device-identity values read from the SECURITY_CONTROL sense registers,
+ * used to bind signed image metadata to this device.
+ *
+ * @oem_id:     OEM identifier (OEM_ID sense register, bits 31:16)
+ * @model_id:   product/model identifier (OEM_ID sense register, bits 15:0)
+ * @jtag_id:    JTAG ID masked to the authentication bits (0x0FFFFFFF)
+ * @serial_num: device serial number
+ */
+struct qcom_secboot_device_ids {
+	uint32_t oem_id;
+	uint32_t model_id;
+	uint32_t jtag_id;
+	uint32_t serial_num;
+};
+
+/*
+ * Read the device-identity fields (OEM_ID, MODEL_ID, JTAG_ID, serial number)
+ * from the SECURITY_CONTROL sense registers.
+ *
+ * @ids: populated on success
+ *
+ * Return TEE_SUCCESS on success or an error if the registers cannot be read.
+ */
+TEE_Result qcom_secboot_get_device_ids(struct qcom_secboot_device_ids *ids);
+
+/*
+ * Read the SOC hardware version family|device field (bits 31:16 of the TCSR
+ * SOC_HW_VERSION register), matching the value the metadata soc_vers binding
+ * compares against.
+ *
+ * @fam_dev: populated with the family|device number on success
+ *
+ * Return TEE_SUCCESS on success or an error if the register cannot be read.
+ */
+TEE_Result qcom_secboot_get_soc_hw_version(uint32_t *fam_dev);
+
+/*
+ * Read the digest size the per-segment hash table uses for a given
+ * root_cert_sel index: the OEM metadata's root_cert_sel (word 28, range
+ * 0-3) selects one of four OEM_CONFIG2 fuse bits on platforms that
+ * implement the field; the bit is 1 for SHA-256, 0 for SHA-384. Platforms
+ * without the field always report SHA-384.
+ *
+ * @root_cert_sel: metadata root_cert_sel index (0-3)
+ * @hash_size:     populated with the digest size in bytes (32 or 48)
+ *
+ * Return TEE_SUCCESS on success, TEE_ERROR_BAD_PARAMETERS if root_cert_sel is
+ * out of range.
+ */
+TEE_Result qcom_secboot_get_segment_hash_size(uint32_t root_cert_sel,
+					      uint32_t *hash_size);
+
+/*
+ * Read the OEM_CONFIG2 EKU_ENFORCEMENT_EN fuse bit. When enabled, image
+ * certificate chains must carry the code-signing Extended Key Usage OID
+ * on the leaf.
+ *
+ * @enabled: populated with the fuse bit's state on success
+ *
+ * Return TEE_SUCCESS on success or an error if the register cannot be read.
+ */
+TEE_Result qcom_secboot_get_eku_enforcement_en(bool *enabled);
+
+/*
+ * Read the OEM_CONFIG0 IMAGE_ENCRYPTION_ENABLE fuse bit. When blown, OEM image
+ * encryption (UIE) is provisioned: an image carrying UIE parameters is expected
+ * to be decrypted before use.
+ *
+ * @enabled: populated with the fuse bit's state on success
+ *
+ * Return TEE_SUCCESS on success or an error if the register cannot be read.
+ */
+TEE_Result qcom_secboot_get_image_encryption_en(bool *enabled);
+
 /* Write QFPROM row data */
 TEE_Result qfprom_write_row(uint32_t addr, uint32_t *data);
 
