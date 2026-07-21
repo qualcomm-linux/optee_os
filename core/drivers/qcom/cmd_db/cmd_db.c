@@ -297,8 +297,10 @@ cmd_db_get_entry_by_res_id(const char *res_id,
 	result->priority[1] = entry.priority[1];
 	result->version = query_db.data->slv_id_info[slv_idx].version;
 
-	if (entry.len == 0)
+	if (entry.len == 0) {
+		result->len = 0;
 		return TEE_SUCCESS;
+	}
 
 	if (result->len == 0) {
 		result->len = entry.len;
@@ -367,6 +369,32 @@ TEE_Result cmd_db_get_addr(const char *res_id, uint32_t *addr)
 	res = cmd_db_get_entry_by_res_id(res_id, &result, NULL);
 	if (res == TEE_SUCCESS)
 		*addr = result.addr;
+
+	mutex_unlock(&query_db.lock);
+	return res;
+}
+
+TEE_Result cmd_db_get_aux(const char *res_id, uint8_t *buf, size_t *len)
+{
+	struct cmd_db_query_result_type result = { };
+	TEE_Result res = TEE_SUCCESS;
+
+	if (!buf || !len || !*len || *len > UINT32_MAX ||
+	    !is_valid_res_id(res_id))
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	result.len = *len;
+
+	mutex_lock(&query_db.lock);
+
+	if (!query_db.data) {
+		mutex_unlock(&query_db.lock);
+		return TEE_ERROR_BAD_STATE;
+	}
+
+	res = cmd_db_get_entry_by_res_id(res_id, &result, buf);
+	if (res == TEE_SUCCESS)
+		*len = result.len;
 
 	mutex_unlock(&query_db.lock);
 	return res;
