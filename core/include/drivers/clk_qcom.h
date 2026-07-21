@@ -7,6 +7,7 @@
 #ifndef _CLK_QCOM_H_
 #define _CLK_QCOM_H_
 
+#include <drivers/clk.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <tee_api_types.h>
@@ -62,6 +63,27 @@ TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
  */
 TEE_Result qcom_lucidevo_pll_enable(vaddr_t pll_base,
 				    const struct qcom_lucidevo_pll_config *cfg);
+
+#ifdef CFG_QCOM_CLK_BSP
+/*
+ * Look up a QUP SE clk this driver registered, by name. qcom has no secure
+ * DT, so a bus consumer acquires the clk this way instead of
+ * clk_dt_get_by_name(), then drives it via the common clk API.
+ */
+TEE_Result qcom_clk_get_by_name(const char *name, struct clk **out);
+
+/* Enable hardware DFS on a registered QUP SE clk (no clk_ops equivalent). */
+TEE_Result qcom_clk_enable_dfs(struct clk *clk);
+
+/*
+ * Resolve the DFS performance-state index @clk would use for @rate (the plan
+ * row clk_set_rate() would select). A bus consumer programs this into its
+ * own GENI_CLK_SEL/GPI TRE once DFS is enabled.
+ */
+TEE_Result qcom_clk_get_dfs_idx(struct clk *clk, unsigned long rate,
+				uint8_t *dfs_idx);
+#endif /* CFG_QCOM_CLK_BSP */
+
 #ifdef CFG_QCOM_PAS_PTA
 TEE_Result qcom_clock_enable_pas(enum qcom_clk_group group);
 TEE_Result qcom_clock_enable_pas_processor(enum qcom_clk_group group);

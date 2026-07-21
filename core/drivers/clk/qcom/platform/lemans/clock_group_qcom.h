@@ -224,4 +224,38 @@
 #define GPDSP_Q6_PLL_USER_CTL			0x00000000
 #define GPDSP_Q6_PLL_USER_CTL_U			0x00400805
 
+#ifdef CFG_QCOM_CLK_BSP
+/*
+ * Root clock generator (RCG) register layout, common across register
+ * revisions v1..v4. Offsets are relative to the domain's CMD_RCGR register
+ * (qcom_clk_domain.cmd_rcgr_offset, itself GCC-relative).
+ */
+#define QCOM_RCG_CFG_REG_OFFSET			0x4
+#define QCOM_RCG_M_REG_OFFSET			0x8
+#define QCOM_RCG_N_REG_OFFSET			0xC
+#define QCOM_RCG_D_REG_OFFSET			0x10
+#define QCOM_RCG_CMD_DFSR_REG_OFFSET		0x14
+#define QCOM_RCG_PERF_DFSR_REG_OFFSET		0x1C
+#define QCOM_RCG_PERF_M_DFSR_REG_OFFSET		0x5C
+#define QCOM_RCG_PERF_N_DFSR_REG_OFFSET		0x9C
+#define QCOM_RCG_PERF_D_DFSR_REG_OFFSET		0xDC
+
+/* CMD_RCGR fields. */
+#define QCOM_RCG_CMD_CFG_UPDATE_FMSK		0x00000001
+
+/* CFG_RCGR fields. */
+#define QCOM_RCG_CFG_HW_CLK_CONTROL_FMSK	0x00100000
+#define QCOM_RCG_CFG_MODE_FMSK			0x00003000
+#define QCOM_RCG_CFG_MODE_SHFT			0xC
+#define QCOM_RCG_CFG_SRC_SEL_FMSK		0x00000700
+#define QCOM_RCG_CFG_SRC_SEL_SHFT		0x8
+#define QCOM_RCG_CFG_SRC_DIV_FMSK		0x0000001F
+#define QCOM_RCG_CFG_SRC_DIV_SHFT		0
+#define QCOM_RCG_CFG_DUAL_EDGE_MODE_VAL		0x2
+
+/* CMD_DFSR fields. */
+#define QCOM_RCG_CMD_DFSR_HW_CLK_CONTROL_FMSK	0x00000020
+#define QCOM_RCG_CMD_DFSR_DFS_EN_FMSK		0x00000001
+#endif /* CFG_QCOM_CLK_BSP */
+
 #endif /* _CLOCK_GROUP_QCOM_H_ */
