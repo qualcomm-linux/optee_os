@@ -94,12 +94,6 @@ void boot_primary_init_intc(void)
 void boot_secondary_init_intc(void)
 {
 	gic_init_per_cpu();
-}
-
-void boot_secondary_init_intc(void)
-{
-	gic_init_per_cpu();
-}
 
 void plat_console_init(void)
 {
