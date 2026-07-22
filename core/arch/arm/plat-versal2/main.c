@@ -96,6 +96,11 @@ void boot_secondary_init_intc(void)
 	gic_init_per_cpu();
 }
 
+void boot_secondary_init_intc(void)
+{
+	gic_init_per_cpu();
+}
+
 void plat_console_init(void)
 {
 	pl011_init(&console_data, CONSOLE_UART_BASE,
