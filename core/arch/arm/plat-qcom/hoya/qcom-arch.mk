@@ -3,6 +3,15 @@
 include core/arch/arm/cpu/cortex-armv8-0.mk
 $(call force,CFG_TEE_CORE_NB_CORE,8)
 
+$(call force,CFG_GIC,y)
+$(call force,CFG_CORE_ARM64_PA_BITS,40)
+$(call force,CFG_QCOM_GENI_UART,y)
+
+# The GENI UART is shared with the Linux kernel and an excessively long
+# wait period may lead to RCU stall warnings depending on system load.
+# Make this value configurable per platform.
+CFG_QCOM_GENI_UART_RDY_WAIT_USEC ?= 1000
+
 $(call force,CFG_QCOM_RAMBLUR_PIMEM_V3,y)
 CFG_QCOM_RAMBLUR_TA_WINDOW_ID ?= 2
 

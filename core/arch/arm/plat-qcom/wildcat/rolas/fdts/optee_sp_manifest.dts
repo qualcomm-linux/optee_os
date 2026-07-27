@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: BSD-2-Clause
+/*
+ * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ *
+ * This file is a Partition Manifest (PM) for OP-TEE as a Secure Partition (SP)
+ * for ROLAS platform with Hafnium SPMC
+ */
+
+/dts-v1/;
+
+/ {
+	compatible = "arm,ffa-manifest-1.0";
+
+	/* Properties */
+	description = "op-tee-rolas";
+	ffa-version = <0x00010002>; /* 31:16 - Major, 15:0 - Minor */
+	uuid = <0xe0786148 0xe311f8e7 0x02005ebc 0x1bc5d5a5>;
+	id = <1>;
+	execution-ctx-count = <8>;
+	exception-level = <2>; /* S-EL1 */
+	execution-state = <0>; /* AARCH64 */
+	load-address = <0x00 0xF8200000>; /* 0xF8200000 */
+	mem-size = <0x00 0x00A00000>; /* 10MB */
+	entrypoint-offset = <0x4000>;
+	xlat-granule = <0>; /* 4KiB */
+	boot-order = <0>;
+	messaging-method = <0x3>; /* Direct request/response supported */
+	notification-support; /* Receipt of notifications */
+
+	/* Boot protocol */
+	gp-register-num = <0x0>;
+	boot-info {
+		compatible = "arm,ffa-manifest-boot-info";
+		ffa_manifest;
+	};
+
+	device-regions {
+		compatible = "arm,ffa-manifest-device-regions";
+
+		/* PL011 UART for ROLAS */
+		uart {
+			base-address = <0x00000010 0x0C800000>;
+			pages-count = <1>;
+			attributes = <0x3>; /* read-write */
+		};
+	};
+};
