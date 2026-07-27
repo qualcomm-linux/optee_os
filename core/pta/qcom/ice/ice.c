@@ -8,7 +8,9 @@
 #include <pta_qcom_ice.h>
 #include <tee_api_defines_extensions.h>
 #include <trace.h>
+#include <drivers/hwkm.h>
 
+#include "hwkm/ice_hwkm.h"
 #include "sw_keys/ice_sw_keys.h"
 
 /*
@@ -30,6 +32,34 @@ static TEE_Result cmd_ice_set_config_key(uint32_t param_types,
 	return sw_cmd_ice_set_config_key(param_types, params);
 }
 
+static TEE_Result cmd_ice_generate_key(uint32_t param_types,
+				       TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[0].memref.buffer) {
+		if (params[0].memref.size == 0) {
+			params[0].memref.size = HWKM_MAX_BLOB_SIZE;
+			return TEE_ERROR_SHORT_BUFFER;
+		}
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	if (params[0].memref.size < HWKM_MAX_BLOB_SIZE) {
+		params[0].memref.size = HWKM_MAX_BLOB_SIZE;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	return generate_hw_wrapped_key(params[0].memref.buffer,
+				       &params[0].memref.size);
+}
+
 /* PTA command dispatcher */
 static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 				 uint32_t param_types,
@@ -40,6 +70,8 @@ static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 		return cmd_ice_invalidate_key(param_types, params);
 	case PTA_CMD_ICE_SET_CONFIG_KEY:
 		return cmd_ice_set_config_key(param_types, params);
+	case PTA_CMD_ICE_GENERATE_KEY:
+		return cmd_ice_generate_key(param_types, params);
 	default:
 		break;
 	}
