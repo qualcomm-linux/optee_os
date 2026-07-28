@@ -67,3 +67,5 @@ $(call force,CFG_QCOM_RPMH_CLIENT,y)
 $(call force,CFG_QCOM_CMD_DB,y)
 CFG_QCOM_ICB_MAX_CLIENTS = 12
 endif
+
+CFG_QCOM_STORAGE_UFS ?= y
