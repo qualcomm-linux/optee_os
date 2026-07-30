@@ -3,13 +3,12 @@
  * Copyright (c) 2026, Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
-#include <initcall.h>
 #include <kernel/pseudo_ta.h>
-#include <kernel/user_ta.h>
-#include <platform_config.h>
+#include <kernel/ts_manager.h>
 #include <platform_pas.h>
 #include <pta_qcom_pas.h>
 #include <string.h>
+#include <util.h>
 
 #define PTA_NAME	"pta.qcom.pas"
 
@@ -26,7 +25,6 @@ static TEE_Result qcom_pas_is_supported(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_is_supported(params[0].value.a);
 }
@@ -41,11 +39,9 @@ static TEE_Result qcom_pas_capabilities(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
-	/* Capabilities flags reserved for future use */
 	params[1].value.a = 0;
-	return pas_platform_capabilities(params[1].value.a);
+	return pas_platform_capabilities(params[0].value.a);
 }
 
 static TEE_Result qcom_pas_init_image(uint32_t pt,
@@ -58,7 +54,6 @@ static TEE_Result qcom_pas_init_image(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_init_image(params[0].value.a);
 }
@@ -72,7 +67,6 @@ static TEE_Result qcom_pas_mem_setup(uint32_t pt,
 						TEE_PARAM_TYPE_NONE);
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_mem_setup(params[0].value.a, params[0].value.b,
 				      params[1].value.a, params[1].value.b);
@@ -88,7 +82,6 @@ static TEE_Result qcom_pas_get_resource_table(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_get_resource_table(params[0].value.a,
 					       params[1].memref.buffer,
@@ -106,7 +99,6 @@ qcom_pas_set_remote_state(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_set_remote_state(params[0].value.a,
 					     params[0].value.b);
@@ -122,7 +114,6 @@ static TEE_Result qcom_pas_auth_and_reset(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_auth_and_reset(params[0].value.a);
 }
@@ -138,7 +129,6 @@ qcom_pas_shutdown(uint32_t pt,
 
 	if (pt != exp_pt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	DMSG("invoked with pas_id: %d", params[0].value.a);
 
 	return pas_platform_shutdown(params[0].value.a);
 }
@@ -170,9 +160,6 @@ static TEE_Result pta_qcom_pas_invoke_command(void *session __unused,
 	}
 }
 
-/*
- * Pseudo Trusted Application entry points
- */
 static TEE_Result
 pta_qcom_pas_open_session(uint32_t pt __unused,
 			  TEE_Param params[TEE_NUM_PARAMS] __unused,
