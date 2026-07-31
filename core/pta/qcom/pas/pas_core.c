@@ -3,6 +3,7 @@
  * Copyright (c) 2026, Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <config.h>
 #include <drivers/clk_qcom.h>
 #include <mm/core_memprot.h>
 #include <mm/core_mmu.h>
@@ -39,12 +40,37 @@ TEE_Result pas_platform_capabilities(uint32_t pas_id __unused)
 	return TEE_SUCCESS;
 }
 
+/*
+ * Firmware authentication is not implemented yet: no signature, hash or
+ * rollback-version check is performed on the image described by init_image()
+ * and started by auth_and_reset().
+ *
+ * A non-secure caller controls both the firmware payload and, through
+ * mem_setup(), the address it is loaded from. Starting a coprocessor on that
+ * image without verifying it first places unverified code inside the trust
+ * boundary, so an authenticating build must not offer the operation at all.
+ *
+ * Permit it only on CFG_INSECURE builds, which are already documented as
+ * non-production, and make the reason visible in the log there.
+ */
+static TEE_Result pas_auth_not_implemented(const char *op)
+{
+	if (!IS_ENABLED(CFG_INSECURE)) {
+		EMSG("%s needs firmware authentication, not implemented", op);
+		return TEE_ERROR_NOT_IMPLEMENTED;
+	}
+
+	IMSG("Warning: %s runs unauthenticated firmware (CFG_INSECURE)", op);
+
+	return TEE_SUCCESS;
+}
+
 TEE_Result pas_platform_init_image(uint32_t pas_id)
 {
 	if (!pas_lookup(pas_id))
 		return TEE_ERROR_NOT_SUPPORTED;
 
-	return TEE_SUCCESS;
+	return pas_auth_not_implemented("init_image");
 }
 
 TEE_Result pas_platform_mem_setup(uint32_t pas_id, uint32_t fw_size,
@@ -107,6 +133,10 @@ TEE_Result pas_platform_auth_and_reset(uint32_t pas_id)
 	data = &subsys->data;
 	if (!data->fw_base)
 		return TEE_ERROR_NO_DATA;
+
+	res = pas_auth_not_implemented("auth_and_reset");
+	if (res != TEE_SUCCESS)
+		return res;
 
 	switch (subsys->reset_seq) {
 	case QCOM_PAS_RESET_CLK_FULL:
