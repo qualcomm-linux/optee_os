@@ -228,10 +228,6 @@ SECTIONS
 		   of the ram data address */
 		__data_start = .;
 		*(.data .data.* .gnu.linkonce.d.*)
-		. = ALIGN(8);
-	}
-	.data_padding : {
-		BYTE(0);
 		. = ALIGN(SMALL_PAGE_SIZE);
 	}
 
