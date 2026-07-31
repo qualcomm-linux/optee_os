@@ -230,6 +230,10 @@ SECTIONS
 		*(.data .data.* .gnu.linkonce.d.*)
 		. = ALIGN(8);
 	}
+	.data_padding : {
+		BYTE(0);
+		. = ALIGN(SMALL_PAGE_SIZE);
+	}
 
 	/* unintialized data */
 	.bss : {
@@ -443,6 +447,10 @@ SECTIONS
 	}
 	.rela : {
 		*(.rela.*)
+	}
+	.dynamic_padding : {
+		BYTE(0);
+		. = ALIGN(SMALL_PAGE_SIZE);
 	}
 #if !defined(CFG_CORE_ASLR) && !defined(CFG_CORE_PHYS_RELOCATABLE)
 	ASSERT(SIZEOF(.rel) == 0, "Relocation entries not expected")
