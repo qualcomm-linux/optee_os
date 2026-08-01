@@ -52,6 +52,46 @@ static TEE_Result get_or_init_ephemeral_ctx(const uint8_t **ctx,
 	return TEE_SUCCESS;
 }
 
+TEE_Result clear_ice_slave_slot_hwkm(uint32_t slot)
+{
+	struct hwkm_transaction t_clear = {
+		.cmd = {
+			.op = HWKM_OP_KEY_SLOT_CLEAR,
+			.clear = {
+				.dks = 0,
+				.is_double_key = true,
+			},
+		},
+	};
+	int rc = HWKM_ERR_GENERIC;
+	vaddr_t base = (vaddr_t)phys_to_virt(ICE_LUT_KEYS, MEM_AREA_IO_SEC,
+					     ICE_LUT_KEYS_SIZE);
+
+	if (slot >= ICE_MAX_KEY_IDX)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	/* Disable slot first so stale key/config cannot be used. */
+	io_write32_off_field(base, ICE_CRYPTOCFG_r_16_OFF(slot),
+			     ICE_CRYPTOCFG_r_16_CFGE_BMSK,
+			     0x0);
+
+	t_clear.cmd.clear.dks = HWKM_ICE_MAP_SLOT(slot);
+
+	rc = hwkm_run_transaction(HWKM_KEY_DEST_ICE_SLAVE, &t_clear);
+	if (rc)
+		return hwkm_to_optee(rc);
+
+	if (t_clear.rsp.status != HWKM_RSP_ERR_SUCCESS &&
+	    t_clear.rsp.status != HWKM_CLEAR_ERR_DKS_SLOT_EMPTY) {
+		EMSG("ICE invalidate clear failed: slot=%u mapped=%u status=0x%x",
+		     slot, (unsigned int)t_clear.cmd.clear.dks,
+		     (unsigned int)t_clear.rsp.status);
+		return TEE_ERROR_GENERIC;
+	}
+
+	return TEE_SUCCESS;
+}
+
 /*
  * export_tpkey_wrapped_blob_from_ephemeral() - Unwrap input blob under
  * ephemeral wrapping key, then re-wrap/export under TPKEY.

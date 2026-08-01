@@ -11,6 +11,20 @@
 #include <drivers/hwkm.h>
 #include "hwkm/ice_hwkm.h"
 
+static TEE_Result cmd_ice_invalidate_key(uint32_t param_types,
+				  TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	return clear_ice_slave_slot_hwkm(params[0].value.a);
+}
+
 static TEE_Result cmd_ice_set_config_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
 {
@@ -144,6 +158,8 @@ static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 				 TEE_Param params[TEE_NUM_PARAMS])
 {
 	switch (cmd_id) {
+	case PTA_CMD_ICE_INVALIDATE_KEY:
+		return cmd_ice_invalidate_key(param_types, params);
 	case PTA_CMD_ICE_SET_CONFIG_KEY:
 		return cmd_ice_set_config_key(param_types, params);
 	case PTA_CMD_ICE_GENERATE_KEY:

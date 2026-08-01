@@ -18,6 +18,12 @@
 		{ 0xa1, 0xe1, 0xa1, 0xb9, 0x0a, 0x21, 0x5b, 0x16 } }
 
 /*
+ * Invalidate ICE key slot - overwrite key registers with random data
+ * [in]  params[0].value.a           Key slot index (0..ICE_MAX_KEY_IDX-1)
+ */
+#define PTA_CMD_ICE_INVALIDATE_KEY    0
+
+/*
  * Program ICE key slot with key material and full configuration
  * [in]  params[0].value.a           Key slot index (0..ICE_MAX_KEY_IDX-1)
  * [in]  params[0].value.b           Cap index (ice_capability_index_type)
