@@ -22,7 +22,20 @@
 static TEE_Result cmd_ice_invalidate_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
 {
-	return sw_cmd_ice_invalidate_key(param_types, params);
+	struct hwkm_drv_ctx *ctx = NULL;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	ctx = hwkm_get_context();
+	if (!ctx)
+		return sw_cmd_ice_invalidate_key(params);
+
+	return clear_ice_slave_slot_hwkm(params[0].value.a);
 }
 
 static TEE_Result cmd_ice_set_config_key(uint32_t param_types,

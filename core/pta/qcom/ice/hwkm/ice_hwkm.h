@@ -8,6 +8,8 @@
 
 #include <tee_api_types.h>
 
+TEE_Result clear_ice_slave_slot_hwkm(uint32_t slot);
+
 TEE_Result set_config_ice_key_using_hwkm(uint32_t slot,
 					 const uint8_t *wrapped_blob,
 					 size_t wrapped_blob_len);
