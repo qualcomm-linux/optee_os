@@ -103,4 +103,12 @@
 #define HWKM_ICE_SIZE                   HWKM_SDC1_SDCC_ICE_SIZE
 #endif /* CFG_QCOM_STORAGE_UFS */
 
+#if defined(CFG_QCOM_STORAGE_UFS)
+#define ICE_LUT_KEYS                    UFS_MEM_ICE_LUT_KEYS
+#define ICE_LUT_KEYS_SIZE               UFS_MEM_ICE_LUT_KEYS_SIZE
+#else /* CFG_QCOM_STORAGE_UFS */
+#define ICE_LUT_KEYS                    PERIPH_SS_SDC1_SDCC_ICE_LUT_KEYS
+#define ICE_LUT_KEYS_SIZE               PERIPH_SS_SDC1_SDCC_ICE_LUT_KEYS_SIZE
+#endif /* CFG_QCOM_STORAGE_UFS */
+
 #endif /* TARGET_CONFIG_H */

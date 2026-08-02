@@ -16,9 +16,8 @@
 /*
  * Controller-agnostic entry points. These wrap the per-controller
  * implementation so the dispatcher stays independent of the underlying ICE
- * block. Only software-key programming exists today; a future hardware-key
- * (HWKM) path can be selected here at runtime, based on the key size passed
- * to the PTA, dispatching to hwkm_cmd_ice_*() instead of sw_cmd_ice_*().
+ * block. A hardware-key (HWKM) path is selected here at runtime, based on
+ * whether HWKM context is initialized and available.
  */
 static TEE_Result cmd_ice_invalidate_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
@@ -29,7 +28,34 @@ static TEE_Result cmd_ice_invalidate_key(uint32_t param_types,
 static TEE_Result cmd_ice_set_config_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
 {
-	return sw_cmd_ice_set_config_key(param_types, params);
+	struct hwkm_drv_ctx *ctx = NULL;
+	uint32_t slot = 0;
+	const uint8_t *wrapped_blob = NULL;
+	size_t wrapped_blob_len = 0;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	ctx = hwkm_get_context();
+	if (!ctx)
+		return sw_cmd_ice_set_config_key(param_types, params);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	slot = params[0].value.a;
+	wrapped_blob = params[1].memref.buffer;
+	wrapped_blob_len = params[1].memref.size;
+
+	if (!wrapped_blob)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (wrapped_blob_len != HWKM_MAX_BLOB_SIZE)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	return set_config_ice_key_using_hwkm(slot, wrapped_blob,
+					     wrapped_blob_len);
 }
 
 static TEE_Result cmd_ice_generate_key(uint32_t param_types,
