@@ -18,6 +18,20 @@
 		{ 0xa1, 0xe1, 0xa1, 0xb9, 0x0a, 0x21, 0x5b, 0x16 } }
 
 /*
+ * Program ICE key slot with key material and full configuration
+ * [in]  params[0].value.a           Key slot index (0..ICE_MAX_KEY_IDX-1)
+ * [in]  params[0].value.b           Cap index (ice_capability_index_type)
+ * [in]  params[1].value.a           Data unit size (ice_data_unit_type)
+ * [in]  params[2].memref.buffer     Key data: key bytes followed by salt bytes
+ *                                   XTS-128: 16B key + 16B salt = 32 bytes
+ *                                   XTS-256: 32B key + 32B salt = 64 bytes
+ *                                   CBC-128: 16B key
+ *                                   CBC-256: 32B key
+ * [in]  params[2].memref.size       Total key data size
+ */
+#define PTA_CMD_ICE_SET_CONFIG_KEY    1
+
+/*
  * Generate a hardware-wrapped ICE storage key blob.
  *
  * Caller supplies an output buffer and its size.

@@ -11,6 +11,34 @@
 #include <drivers/hwkm.h>
 #include "hwkm/ice_hwkm.h"
 
+static TEE_Result cmd_ice_set_config_key(uint32_t param_types,
+					 TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+	uint32_t slot = 0;
+	const uint8_t *wrapped_blob = NULL;
+	size_t wrapped_blob_len = 0;
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	slot = params[0].value.a;
+	wrapped_blob = params[1].memref.buffer;
+	wrapped_blob_len = params[1].memref.size;
+
+	if (!wrapped_blob)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (wrapped_blob_len != HWKM_MAX_BLOB_SIZE)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	return set_config_ice_key_using_hwkm(slot, wrapped_blob,
+					     wrapped_blob_len);
+}
+
 static TEE_Result cmd_ice_generate_key(uint32_t param_types,
 				       TEE_Param params[TEE_NUM_PARAMS])
 {
@@ -116,6 +144,8 @@ static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 				 TEE_Param params[TEE_NUM_PARAMS])
 {
 	switch (cmd_id) {
+	case PTA_CMD_ICE_SET_CONFIG_KEY:
+		return cmd_ice_set_config_key(param_types, params);
 	case PTA_CMD_ICE_GENERATE_KEY:
 		return cmd_ice_generate_key(param_types, params);
 	case PTA_CMD_ICE_IMPORT_KEY:
