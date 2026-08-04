@@ -1,37 +1,7 @@
-/*===========================================================================
-
-                       QFPROM  Driver Source  Code
-
-DESCRIPTION
- Contains target specific definitions and APIs to be used to read and write
- qfprom values for sec ctrl 3.0.
-
-INITIALIZATION AND SEQUENCING REQUIREMENTS
-  None
-
-Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-All rights reserved.
-Confidential and Proprietary - Qualcomm Technologies, Inc.
-============================================================================*/
-
-/*===========================================================================
-
-                           EDIT HISTORY FOR FILE
-
-This section contains comments describing changes made to this file.
-Notice that changes are listed in reverse chronological order.
-
-
-when       who     what, where, why
---------   ---     ----------------------------------------------------------
-10/31/24   ask    Initial version
-
-============================================================================*/
-
-/*=============================================================================
-                            INCLUDE FILES FOR MODULE
-
-=============================================================================*/
+/* SPDX-License-Identifier: BSD-2-Clause */
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
 
 #include <qfprom.h>
 #include "msmhwiobase.h"

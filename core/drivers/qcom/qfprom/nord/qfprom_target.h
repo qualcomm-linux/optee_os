@@ -1,562 +1,231 @@
-#ifndef QFPROM_TARGET_NORD_H
-#define QFPROM_TARGET_NORD_H
-
-/*===========================================================================
-
-                        QFPROM  Driver Header  File
-
-DESCRIPTION
- Contains target specific defintions and APIs to be used to read and write
- qfprom values for sec ctrl 3.0 .
-
-INITIALIZATION AND SEQUENCING REQUIREMENTS
-  None
-
-Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-All rights reserved.
-Confidential and Proprietary - Qualcomm Technologies, Inc.
-============================================================================*/
-
-/*===========================================================================
-
-                           EDIT HISTORY FOR FILE
-
-This section contains comments describing changes made to this file.
-Notice that changes are listed in reverse chronological order.
-
-
-when       who     what, where, why
---------   ---     ----------------------------------------------------------
-10/31/24   ask    Initial version
-
-============================================================================*/
-
-/*===========================================================================
-
-                           INCLUDE FILES
-
-===========================================================================*/
-
-#include "qfprom.h"
-
-/*===========================================================================
-
-                      PUBLIC DATA DECLARATIONS
-
-===========================================================================*/
-
-// Start of TMT add for compilation issues
-// from com_dtypes.h
-
-#if (! defined T_WINNT) && (! defined __GNUC__)
-    /* Non WinNT Targets */
-
-    #if defined(__ARMCC_VERSION)
-      #define ALIGN(__value) __align(__value)
-    #else
-      #ifndef FEATURE_WINCE
-        #define ALIGN(__value) __attribute__((__aligned__(__value)))
-      #else /* FEATURE_WINCE */
-        #define ALIGN(__value)
-      #endif /* FEATURE_WINCE */
-    #endif /* defined (__GNUC__) */   
-#else /* T_WINNT || TARGET_OS_SOLARIS || __GNUC__ */
-
-    /* WINNT or SOLARIS based targets*/
-    #if defined (__GNUC__) || defined (__GNUG__)
-      #define ALIGN(__value) __attribute__((aligned(__value)))
-    #else
-      #define ALIGN(__value)
-    #endif   
-#endif /* T_WINNT */
-
-// End of TMT add for compilation issues
-
-
-typedef enum
-{
-  QFPROM_FEC_NONE = 0,
-  QFPROM_FEC_15_10,
-  QFPROM_FEC_63_56,
-  QFPROM_FEC_62_56,
-
-  /* Add above this */
-  QFPROM_MAX_FEC
-}QFPROM_FEC_SCHEME;
-
-typedef enum
-{
-  QFPROM_CONV_FORMAT_RAW_TO_CORR = 0,
-  QFPROM_CONV_FORMAT_CORR_TO_RAW = 1,
-}QFPROM_CONV_FORMAT;
-
-typedef enum
-{
-  QFPROM_ROW_LSB = 0,
-  QFPROM_ROW_MSB,
-}QFPROM_ROW;
-
-/* Invalid entry */
-#define QFPROM_INVALID_ENTRY 0xFFFFFFFF
-            
-/* Raw to Corrected Address region offset  */
-#define QFPROM_RAW_TO_CORRECTED_ADDRESS_OFFSET   (0x2000)
-
-/* Macro for Read/write permission of corrected address */
-#define QFPROM_READ_PERM_CORRECTED_LSB_ADDR       HWIO_REMAPPED_QFPROM_CORR_READ_PERMISSIONS_LSB_ADDR
-#define QFPROM_READ_PERM_CORRECTED_MSB_ADDR       HWIO_REMAPPED_QFPROM_CORR_READ_PERMISSIONS_MSB_ADDR
-#define QFPROM_WRITE_PERM_CORRECTED_LSB_ADDR      HWIO_REMAPPED_QFPROM_CORR_WRITE_PERMISSIONS_LSB_ADDR
-#define QFPROM_WRITE_PERM_CORRECTED_MSB_ADDR      HWIO_REMAPPED_QFPROM_CORR_WRITE_PERMISSIONS_MSB_ADDR
-
-#define QFPROM_FEC_EN_CORRECTED_LSB_ADDR          HWIO_REMAPPED_QFPROM_CORR_FUSE_REDUNDANCY_ENABLE_LSB_ADDR
-#define QFPROM_FEC_EN_CORRECTED_MSB_ADDR          HWIO_REMAPPED_QFPROM_CORR_FUSE_REDUNDANCY_ENABLE_MSB_ADDR
-/*---------------------------------------------------------------------------
-  QFPROM REGIONS 
----------------------------------------------------------------------------*/
-typedef enum
-{
-  QFPROM_TME_PCD_REGION = 0,                   /*  0 */
-  QFPROM_TME_PRIVATE_REGION,                   /*  1 */
-  QFPROM_TME_LCS_REGION,                       /*  2 */
-  QFPROM_MRC_REGION,                           /*  3 */
-  QFPROM_QC_SECURITY_POLICY_REGION,            /*  4 */
-  QFPROM_OEM_SECURITY_POLICY_REGION,           /*  5 */
-  QFPROM_WRITE_PERMISSIONS_REGION,             /*  6 */
-  QFPROM_READ_PERMISSIONS_REGION,              /*  7 */
-  QFPROM_FUSE_REDUNDANCY_ENABLE_REGION,        /*  8 */
-  QFPROM_DEBUG_DISABLE_REGION,                 /*  9 */
-  QFPROM_DEBUG_TEST_REENABLE_REGION,           /* 10 */
-  QFPROM_PTE_REGION,                           /* 11 */
-  QFPROM_SECURITY_VERSIONING_REGION,           /* 12 */
-  QFPROM_QC_CONFIG_REGION,                     /* 13 */
-  QFPROM_OEM_CONFIG_REGION,                    /* 14 */
-  QFPROM_FEATURE_CONFIG_REGION,                /* 15 */
-  QFPROM_FEATURE_CONFIG_OVERRIDE_REGION,       /* 16 */
-  QFPROM_ANTI_ROLLBACK_REGION,                 /* 17 */
-  QFPROM_QC_ECC_REGION,                        /* 18 */
-  QFPROM_M3_CERTIFICATE_REGION,                /* 19 */
-  QFPROM_QC_SPARE_0_REGION,                    /* 20 */
-  QFPROM_QC_SPARE_1_REGION,                    /* 21 */
-  QFPROM_QC_SPARE_2_REGION,                    /* 22 */
-  QFPROM_QC_SPARE_3_REGION,                    /* 23 */
-  QFPROM_TME_SEQUENCER_RAM_PATCH_HASH_REGION,  /* 24 */
-  QFPROM_TME_SEQUENCER_ROM_PATCH_REGION,       /* 25 */
-  QFPROM_MRC_HASH_REGION,                      /* 26 */
-  QFPROM_OEM_PRODUCT_SEED_REGION,              /* 27 */
-  QFPROM_SOC_ROM_PATCH_REGION,                 /* 28 */
-  QFPROM_TME_CPU_ROM_PATCH_REGION,             /* 29 */
-  QFPROM_CALIBRATION_REGION,                   /* 30 */
-  QFPROM_MEMORY_REDUN_REGION,                  /* 31 */
-  QFPROM_MEMORY_ACC_REGION,                    /* 32 */
-  QFPROM_OEM_SPARE_0_REGION,                   /* 33 */
-  QFPROM_OEM_SPARE_1_REGION,                   /* 34 */
-  QFPROM_OEM_SPARE_2_REGION,                   /* 35 */
-  QFPROM_OEM_SPARE_3_REGION,                   /* 36 */
-  
-  /* Add above this */
-  QFPROM_LAST_REGION_DUMMY,
-  QFPROM_MAX_REGION_ENUM                = 0x7FFF /* To ensure it's 16 bits wide */
-} QFPROM_REGION_NAME;
-
-typedef struct
-{
-  /* region name; added only for readability */  
-  ALIGN(4) QFPROM_REGION_NAME  region;
-
-  /* how many rows the region takes */
-  uint32_t                     size;
-
-  /*  fec type of region */
-  ALIGN(4) QFPROM_FEC_SCHEME   fec_type;
-
-  /* raw address  of the region */
-  uint32_t                      raw_base_addr;      
-
-  /* corrected address of the region */
-  uint32_t                      corr_base_addr;
-
-  /* can we read this region    */
-  uint32_t                      read_perm_mask;      
-
-  /* can we write to this region    */
-  uint32_t                      write_perm_mask;
-
-  /* LSB or MSB  of the qfprom permission region */
-  ALIGN(4) QFPROM_ROW           perm_reg_type;
-
-  /* Region read-able/non-read-able */
-  ALIGN(4) bool                 read_allowed; 
-
-  /* Region index */
-  uint32_t                      qfprom_region_index; 
-
-} QFPROM_REGION_INFO;
-
-
-typedef struct
-{
-    /* Row address */
-    uint32_t raw_row_address;
-
-    /* MSB row data */
-    uint32_t row_data_msb;
-    
-    /* LSB row data */
-    uint32_t row_data_lsb;
-} write_row_type;
-
-
-extern const QFPROM_REGION_INFO qfprom_region_data[];
-
-
-/*===========================================================================
-
-                      PUBLIC FUNCTION DECLARATIONS
-
-===========================================================================*/
-
-
-/*===========================================================================
-
-**  Function :
-
-** ==========================================================================
-*/
-/*!
-*   qfprom_is_region_readable
-* 
-* @brief
-*   This function shall return if the read permission for the region passed is available or not.
-* 
-* @par Dependencies
-*    None
-* 
-* @param
-*   region - The QFPROM region to be checked.
-* 
-* @retval boolean 
-*                         - TRUE - permission is available 
-*                         - FALSE - permission is not available 
-* 
-* @par Side Effects
-* 
-*/
-bool     qfprom_is_region_readable
-(
-    QFPROM_REGION_NAME  region
-);
-
-/*===========================================================================
-
-**  Function :    qfprom_is_region_writeable
-
-** ==========================================================================
-*/
-/*!
-*   qfprom_is_region_writeable
-* 
-* @brief
-*   This function shall return if the write permission for the region passed is available or not.
-* 
-* @par Dependencies
-*    None
-* 
-* @param
-*   region - The QFPROM region to be checked.
-* 
-* @retval boolean 
-*                         - TRUE - permission is available 
-*                         - FALSE - permission is not available 
-* 
-* @par Side Effects
-* 
-*/
-bool     qfprom_is_region_writeable
-(
-    QFPROM_REGION_NAME  region
-);
-
-/*===========================================================================
-
-**  Function :
-
-** ==========================================================================
-*/
-/*!
-*   qfprom_is_region_fec_blown
-*
-* @brief
-*   This function shall return if the FEC is blown for the region passed.
-*
-* @par Dependencies
-*    None
-*
-* @param
-*   region - The QFPROM region to be checked.
-*
-*   fec_status
-*                         - TRUE - FEC is blown
-*                         - FALSE - FEC is not blown
-*
-* @retval uint32_t  - QFPROM_NO_ERR - on success
-*                     error_type    - if the operation is failure.
-* 
-* 
-* @par Side Effects
-*
-*/
-uint32_t     qfprom_is_region_fec_blown
-(
-    QFPROM_REGION_NAME  region,
-    bool *fec_status
-);
-
-/*===========================================================================
-
-**  Function : qfprom_get_region_name
-
-** ==========================================================================
-*/
-/*!
-* 
-* @brief
-*   This function gets the region of the given row address which need to be a RAW
-*   address.
-*  
-* @par Dependencies
-*   None.
-*     
-* @param:
-*   uint32  address - Address of the Row.
-*   QFPROM_ADDR_SPACE addr_type - Raw or Corrected address,
-*   QFPROM_REGION_NAME* region_type - QFPROM Region of the Row address 
-*                                                              passed.
-* 
-* @retval
-* @retval: return - QFPROM_NO_ERR - if the operation is success.
-*                           error_type           - if the operation is failure.                      
-* @par Side Effects
-*   None.
-* 
-*   
-*/
-uint32_t qfprom_get_region_name
- (
-    uint32_t address,
-    QFPROM_ADDR_SPACE addr_type,
-    QFPROM_REGION_NAME* region_type    
- );
-
-
-/*===========================================================================
-
-FUNCTION  qfprom_check_convert_to_active_address
-
-DESCRIPTION
-    This function shall check the address the appropriate voltage dependent settings for the qfprom block.
-
-PARAMETERS
-    uint32   row_address  - Pointer to the row address to be checked 
-    uint32   *active_row_address  - Pointer to the active row address after conversion 
-
-DEPENDENCIES
-  None.
- 
-RETURN VALUE
-  uint32  Any Errors while setting up the system before blowing the fuses.
-
-SIDE EFFECTS
-  Disables the vreg being used.
-
-===========================================================================*/
-
-uint32_t
-qfprom_check_convert_to_active_address
-(
-    uint32_t  row_address,
-    uint32_t *active_row_address
-);
-
-
-/*===========================================================================
-
-FUNCTION  qfprom_check_boundary_condition_for_row_address
-
-DESCRIPTION
-    This function shall check the boundary condition for the row address to be operated.
-
-PARAMETERS
-    uint32   row_address  - Row address to be checked 
-
-DEPENDENCIES
-  None.
- 
-RETURN VALUE
-  uint32  Any Errors while setting up the system before blowing the fuses.
-
-SIDE EFFECTS
-  Disables the vreg being used.
-
-===========================================================================*/
-
-uint32_t
-qfprom_check_boundary_condition_for_row_address
-(
-    uint32_t row_address
-);
-
-
-/*===========================================================================
-
-**  Function : qfprom_get_region_index
-
-** ==========================================================================
-*/
-/*!
-* 
-* @brief
-*  This function gets the index of the region to which the given row address
-*  belongs
-*  
-* @par Dependencies
-*  None.
-*     
-* @param:
-*  uint32 address - Address of the Row.
-*  QFPROM_ADDR_SPACE addr_type - Raw or Corrected address,
-*  uint32 *region_index - pointer to address location which will
-*                          be filled in with index value by api.
-* 
-* @retval
-* @retval: return - QFPROM_NO_ERR - if the operation is success.
-*                   error_type    - if the operation is failure.                      
-* @par Side Effects
-*  None.
-* 
-*   
-*/
-uint32_t qfprom_get_region_index
-(
-    uint32_t address,
-    QFPROM_ADDR_SPACE addr_type,
-    uint32_t *region_index
-);
-
-
-/*===========================================================================
-**  Function :    : qfprom_write
-
-** ==========================================================================
-*/
-/*!
-*
-* @brief :  This function writes the actual raw data to the row
-*
-*
-* @param  :
-*                 uint32     raw_row_address,
-*                 uint64    *raw_data_to_write     - Pointer to data.
-*                 uintptr_t *pAddrErr             - first address with error
-* @par Dependencies:
-*
-* @retval: return - QFPROM_NO_ERR - if the operation is success.
-*                    error_type           - if the operation is failure.
-*
-* @par Side Effects:
-* algo: Write the lower 32 bits and wait for the fuse write status to be ok.
-*       Then write the upper 32 bits
-*       If the write operation goes ok return QFPROM_NO_ERR else the error value.
-*/
-uint32_t qfprom_write
-(
-    uint32_t    raw_row_address,
-    uint64_t  * raw_data_to_write,
-    uintptr_t * pAddrErr
-);
-
-
-/*===========================================================================
-**  Function :    : qfprom_write_check_row_pre_conditions
-
-** ==========================================================================
-*/
-/*!
-*
-* @brief :  This function shall check if the row address is part of supported QFPROM Region
-*            returns the status.
-*
-* @param  :
-*                 uint32   raw_row_address,
-*                 uint32   *row_data,           - Pointer to data.
-*                 QFPROM_REGION_NAME* region_type
-* @par Dependencies:
-*
-* @retval: return - QFPROM_NO_ERR - if the operation is success.
-*                   error_type           - if the operation is failure.
-*
-*/
-uint32_t qfprom_write_check_row_pre_conditions
-(
-    uint32_t   raw_row_address,
-    QFPROM_REGION_NAME* region_type
-);
-
-
-/*===========================================================================
-
-**  Function : qfprom_find_index
-
-** ==========================================================================
-*/
-/*!
-*
-* @brief
-*   This function finds the index of the fuse in the chain.
-*
-* @par Dependencies
-*   None.
-*
-* @param:
-*   QFPROM_REGION_NAME  This tells the region ID for which we want to find index.
-*
-* @retval
-*   uint32  Index in qfprom table that matches qfpromId;
-*           return QFPROM_INVALID_ENTRY in no match found.
-*
-* @par Side Effects
-*   None.
-*
-*
-*/
-uint32_t qfprom_find_index(QFPROM_REGION_NAME qfpromRegion);
-
-/*===========================================================================
-
-**  Function : qfprom_get_corrected_address
-
-** ==========================================================================
-*/
-/*!
-* 
-* @brief
-*  This function gets the corrected address of the region to which the given raw 
-*  row address belongs
-*  
-* @par Dependencies
-*  None.
-*     
-* @param:
-*  uint32 active_raw_address - Raw address of the Row.
-*  uint32 *corr_address - pointer to address location which will
-*                         be filled in with corr addr value by api.
-* 
-* @retval
-* @retval: return - QFPROM_NO_ERR - if the operation is success.
-*                   error_type    - if the operation is failure.
-* @par Side Effects
-*  None.
-* 
-*   
-*/
-uint32_t qfprom_get_corrected_address(uint32_t active_raw_address, uint32_t * corr_address);
-#endif /* QFPROM_TARGET_NORD_H */
+/* SPDX-License-Identifier: BSD-2-Clause */
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+#ifndef __QFPROM_TARGET_H__
+#define __QFPROM_TARGET_H__
+
+#include <clock_group_qcom.h>
+#include <platform_config.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <tee_api_types.h>
+#include <util.h>
+
+#define QFPROM_RAW_BASE                         0x00780000
+#define QFPROM_CORR_BASE                        0x00784000
+#define QFPROM_SIZE                             0x4000
+
+#define QFPROM_BLOW_TIMER_OFFSET                0x2030
+#define QFPROM_ACCEL_OFFSET                     0x2038
+
+#define QFPROM_BLOW_STATUS_OFFSET               0x203c
+#define QFPROM_BLOW_STATUS_RMSK                 0x3
+#define QFPROM_BLOW_STATUS_BUSY_VAL             0x1
+#define QFPROM_BLOW_STATUS_ERROR_VAL            0x2
+#define QFPROM_BLOW_STATUS_READY_VAL            0x0
+
+#define QFPROM_FEC_ESR_OFFSET                   0x2058
+#define QFPROM_FEC_EAR_OFFSET                   0x205c
+#define QFPROM_FEC_ESR_ERR_SEEN_BMSK            BIT(0)
+#define QFPROM_FEC_EAR_ERR_ADDR_BMSK            0xFFFF
+
+#define QFPROM_BLOW_TIMER_CLK_FREQ_MHZ_X10      48
+#define QFPROM_FUSE_BLOW_TIME_IN_US             5
+
+#define QFPROM_GATELAST_VAL                     0x1
+#define QFPROM_TRIPPT_SEL_VAL                   0x4
+#define QFPROM_ACCEL_VAL                        0x10
+
+#define QFPROM_GATELAST_SHFT                    11
+#define QFPROM_TRIPPT_SEL_SHFT                  8
+#define QFPROM_ACCEL_SHFT                       0
+
+#define QFPROM_ACCEL_VALUE \
+	((QFPROM_GATELAST_VAL << QFPROM_GATELAST_SHFT) | \
+	 (QFPROM_TRIPPT_SEL_VAL << QFPROM_TRIPPT_SEL_SHFT) | \
+	 (QFPROM_ACCEL_VAL << QFPROM_ACCEL_SHFT))
+
+#define QFPROM_ACCEL_RESET_VALUE \
+	(0x1 << QFPROM_GATELAST_SHFT)
+
+#define QFPROM_RAW_TO_CORR(raw_addr) \
+	((raw_addr) + (QFPROM_CORR_BASE - QFPROM_RAW_BASE))
+
+#define LCM_ADDR                                0x00780120
+#define PRI_KEY_DERIVATION_KEY_ADDR             0x00780128
+#define MRC_2_0_ADDR                            0x00780148
+#define PTE_ADDR                                0x00780158
+#define READ_PERMISSION_ADDR                    0x00780190
+#define WRITE_PERMISSION_ADDR                   0x00780198
+#define FEC_ENABLES_ADDR                        0x007801A0
+#define OEM_CONFIG_ADDR                         0x007801A8
+#define FEATURE_CONFIG_M_ADDR                   0x007801D0
+#define FEATURE_CONFIG_NM_ADDR                  0x00780210
+#define ANTI_ROLLBACK_1_ADDR                    0x00780238
+#define ANTI_ROLLBACK_2_ADDR                    0x00780240
+#define ANTI_ROLLBACK_3_ADDR                    0x00780248
+#define ANTI_ROLLBACK_4_ADDR                    0x00780250
+#define ANTI_ROLLBACK_5_ADDR                    0x00780258
+#define ANTI_ROLLBACK_6_ADDR                    0x00780260
+#define ANTI_ROLLBACK_7_ADDR                    0x00780268
+#define ANTI_ROLLBACK_8_ADDR                    0x00780270
+#define ANTI_ROLLBACK_9_ADDR                    0x00780278
+#define ANTI_ROLLBACK_10_ADDR                   0x00780280
+#define ANTI_ROLLBACK_11_ADDR                   0x00780288
+#define ANTI_ROLLBACK_12_ADDR                   0x00780290
+#define ANTI_ROLLBACK_13_ADDR                   0x00780298
+#define PK_HASH_0_ADDR                          0x007802A0
+#define CALIBRATION_ADDR                        0x007802E0
+#define MEMORY_CONFIGURATION_ADDR               0x00780490
+#define QC_SPARE_20_ADDR                        0x00780D50
+#define QC_SPARE_21_ADDR                        0x00780D58
+#define OEM_IMAGE_ENCRYPTION_KEY_ADDR           0x00780D60
+#define OEM_SECURE_BOOT_ADDR                    0x00780D78
+#define SEC_KEY_DERIVATION_KEY_ADDR             0x00780D88
+#define IMAGE_ENCRYPTION_KEY_1_ADDR             0x00781150
+#define USER_KEY_DERIVATION_KEY_ADDR            0x00781168
+#define OEM_SPARE_28_ADDR                       0x00781190
+#define OEM_SPARE_29_ADDR                       0x007811A0
+#define OEM_SPARE_30_ADDR                       0x007811B0
+#define OEM_SPARE_31_ADDR                       0x007811C0
+
+#define QFPROM_READ_PERM_LSB_OFFSET \
+	(READ_PERMISSION_ADDR - QFPROM_RAW_BASE)
+#define QFPROM_READ_PERM_MSB_OFFSET \
+	(QFPROM_READ_PERM_LSB_OFFSET + 4)
+
+#define QFPROM_WRITE_PERM_LSB_OFFSET \
+	(WRITE_PERMISSION_ADDR - QFPROM_RAW_BASE)
+#define QFPROM_WRITE_PERM_MSB_OFFSET \
+	(QFPROM_WRITE_PERM_LSB_OFFSET + 4)
+
+#define QFPROM_HW_MUTEX_ID			8
+#define QFPROM_HW_MUTEX_PID			1
+#define QFPROM_HW_MUTEX_TIMEOUT_US		10000
+#define QFPROM_MUTEX_REG_ADDR \
+	(TCSR_MUTEX_BASE + (0x1000 * QFPROM_HW_MUTEX_ID))
+
+enum qfprom_region_name {
+	QFPROM_CRI_CM_PRIVATE_REGION = 0,
+	QFPROM_LCM_REGION,
+	QFPROM_PRI_KEY_DERIVATION_KEY_REGION,
+	QFPROM_MRC_2_0_REGION,
+	QFPROM_PTE_REGION,
+	QFPROM_READ_PERMISSION_REGION,
+	QFPROM_WRITE_PERMISSION_REGION,
+	QFPROM_FEC_ENABLES_REGION,
+	QFPROM_OEM_CONFIG_REGION,
+	QFPROM_FEATURE_CONFIG_M_REGION,
+	QFPROM_FEATURE_CONFIG_NM_REGION,
+	QFPROM_ANTI_ROLLBACK_1_REGION,
+	QFPROM_ANTI_ROLLBACK_2_REGION,
+	QFPROM_ANTI_ROLLBACK_3_REGION,
+	QFPROM_ANTI_ROLLBACK_4_REGION,
+	QFPROM_ANTI_ROLLBACK_5_REGION,
+	QFPROM_ANTI_ROLLBACK_6_REGION,
+	QFPROM_ANTI_ROLLBACK_7_REGION,
+	QFPROM_ANTI_ROLLBACK_8_REGION,
+	QFPROM_ANTI_ROLLBACK_9_REGION,
+	QFPROM_ANTI_ROLLBACK_10_REGION,
+	QFPROM_ANTI_ROLLBACK_11_REGION,
+	QFPROM_ANTI_ROLLBACK_12_REGION,
+	QFPROM_ANTI_ROLLBACK_13_REGION,
+	QFPROM_PK_HASH_0_REGION,
+	QFPROM_CALIBRATION_REGION,
+	QFPROM_MEMORY_CONFIGURATION_REGION,
+	QFPROM_QC_SPARE_20_REGION,
+	QFPROM_QC_SPARE_21_REGION,
+	QFPROM_OEM_IMAGE_ENCRYPTION_KEY_REGION,
+	QFPROM_OEM_SECURE_BOOT_REGION,
+	QFPROM_SEC_KEY_DERIVATION_KEY_REGION,
+	QFPROM_BOOT_ROM_PATCH_REGION,
+	QFPROM_IMAGE_ENCRYPTION_KEY_1_REGION,
+	QFPROM_USER_KEY_DERIVATION_KEY_REGION,
+	QFPROM_OEM_SPARE_28_REGION,
+	QFPROM_OEM_SPARE_29_REGION,
+	QFPROM_OEM_SPARE_30_REGION,
+	QFPROM_OEM_SPARE_31_REGION,
+	QFPROM_LAST_REGION_DUMMY,
+};
+
+enum qfprom_perm_bit_pos {
+	LCM = 1,
+	PRI_KEY_DERIVATION_KEY = 2,
+	MRC_2_0 = 3,
+	PTE = 4,
+	READ_PERMISSION = 5,
+	WRITE_PERMISSION = 6,
+	FEC_ENABLES = 7,
+	OEM_CONFIG = 8,
+	FEATURE_CONFIG_M = 9,
+	FEATURE_CONFIG_NM = 10,
+	ANTI_ROLLBACK_1 = 11,
+	ANTI_ROLLBACK_2 = 12,
+	ANTI_ROLLBACK_3 = 13,
+	ANTI_ROLLBACK_4 = 14,
+	ANTI_ROLLBACK_5 = 15,
+	ANTI_ROLLBACK_6 = 16,
+	ANTI_ROLLBACK_7 = 17,
+	ANTI_ROLLBACK_8 = 18,
+	ANTI_ROLLBACK_9 = 19,
+	ANTI_ROLLBACK_10 = 20,
+	ANTI_ROLLBACK_11 = 21,
+	ANTI_ROLLBACK_12 = 22,
+	ANTI_ROLLBACK_13 = 23,
+	PK_HASH_0 = 24,
+	CALIBRATION = 25,
+	MEMORY_CONFIGURATION = 26,
+	QC_SPARE_20 = 27,
+	QC_SPARE_21 = 28,
+	OEM_IMAGE_ENCRYPTION_KEY = 29,
+	OEM_SECURE_BOOT = 30,
+	SEC_KEY_DERIVATION_KEY = 31,
+	IMAGE_ENCRYPTION_KEY_1 = 1,  /* MSB bit 1 */
+	USER_KEY_DERIVATION_KEY = 2, /* MSB bit 2 */
+	OEM_SPARE_28 = 3,            /* MSB bit 3 */
+	OEM_SPARE_29 = 4,            /* MSB bit 4 */
+	OEM_SPARE_30 = 5,            /* MSB bit 5 */
+	OEM_SPARE_31 = 6,            /* MSB bit 6 */
+};
+
+#define LCM_PERM_MASK				BIT(LCM)
+#define PRI_KEY_DERIVATION_KEY_PERM_MASK	BIT(PRI_KEY_DERIVATION_KEY)
+#define MRC_2_0_PERM_MASK			BIT(MRC_2_0)
+#define PTE_PERM_MASK				BIT(PTE)
+#define READ_PERMISSION_PERM_MASK		BIT(READ_PERMISSION)
+#define WRITE_PERMISSION_PERM_MASK		BIT(WRITE_PERMISSION)
+#define FEC_ENABLES_PERM_MASK			BIT(FEC_ENABLES)
+#define OEM_CONFIG_PERM_MASK			BIT(OEM_CONFIG)
+#define FEATURE_CONFIG_M_PERM_MASK		BIT(FEATURE_CONFIG_M)
+#define FEATURE_CONFIG_NM_PERM_MASK		BIT(FEATURE_CONFIG_NM)
+#define ANTI_ROLLBACK_1_PERM_MASK		BIT(ANTI_ROLLBACK_1)
+#define ANTI_ROLLBACK_2_PERM_MASK		BIT(ANTI_ROLLBACK_2)
+#define ANTI_ROLLBACK_3_PERM_MASK		BIT(ANTI_ROLLBACK_3)
+#define ANTI_ROLLBACK_4_PERM_MASK		BIT(ANTI_ROLLBACK_4)
+#define ANTI_ROLLBACK_5_PERM_MASK		BIT(ANTI_ROLLBACK_5)
+#define ANTI_ROLLBACK_6_PERM_MASK		BIT(ANTI_ROLLBACK_6)
+#define ANTI_ROLLBACK_7_PERM_MASK		BIT(ANTI_ROLLBACK_7)
+#define ANTI_ROLLBACK_8_PERM_MASK		BIT(ANTI_ROLLBACK_8)
+#define ANTI_ROLLBACK_9_PERM_MASK		BIT(ANTI_ROLLBACK_9)
+#define ANTI_ROLLBACK_10_PERM_MASK		BIT(ANTI_ROLLBACK_10)
+#define ANTI_ROLLBACK_11_PERM_MASK		BIT(ANTI_ROLLBACK_11)
+#define ANTI_ROLLBACK_12_PERM_MASK		BIT(ANTI_ROLLBACK_12)
+#define ANTI_ROLLBACK_13_PERM_MASK		BIT(ANTI_ROLLBACK_13)
+#define PK_HASH_0_PERM_MASK			BIT(PK_HASH_0)
+#define CALIBRATION_PERM_MASK			BIT(CALIBRATION)
+#define MEMORY_CONFIGURATION_PERM_MASK		BIT(MEMORY_CONFIGURATION)
+#define QC_SPARE_20_PERM_MASK			BIT(QC_SPARE_20)
+#define QC_SPARE_21_PERM_MASK			BIT(QC_SPARE_21)
+#define OEM_IMAGE_ENCRYPTION_KEY_PERM_MASK	BIT(OEM_IMAGE_ENCRYPTION_KEY)
+#define OEM_SECURE_BOOT_PERM_MASK		BIT(OEM_SECURE_BOOT)
+#define SEC_KEY_DERIVATION_KEY_PERM_MASK	BIT(SEC_KEY_DERIVATION_KEY)
+#define IMAGE_ENCRYPTION_KEY_1_PERM_MASK	BIT(IMAGE_ENCRYPTION_KEY_1)
+#define USER_KEY_DERIVATION_KEY_PERM_MASK	BIT(USER_KEY_DERIVATION_KEY)
+#define OEM_SPARE_28_PERM_MASK			BIT(OEM_SPARE_28)
+#define OEM_SPARE_29_PERM_MASK			BIT(OEM_SPARE_29)
+#define OEM_SPARE_30_PERM_MASK			BIT(OEM_SPARE_30)
+#define OEM_SPARE_31_PERM_MASK			BIT(OEM_SPARE_31)
+
+#endif /* __QFPROM_TARGET_H__ */
