@@ -74,6 +74,7 @@ SRCS_CRYPTO += aes.c
 SRCS_CRYPTO += aesni.c
 SRCS_CRYPTO += asn1parse.c
 SRCS_CRYPTO += asn1write.c
+SRCS_CRYPTO += base64.c
 SRCS_CRYPTO += bignum.c
 SRCS_CRYPTO += bignum_core.c
 SRCS_CRYPTO += bignum_mod_raw.c
@@ -92,6 +93,7 @@ SRCS_CRYPTO += ecp_curves_new.c
 SRCS_CRYPTO += md.c
 SRCS_CRYPTO += md5.c
 SRCS_CRYPTO += oid.c
+SRCS_CRYPTO += pem.c
 SRCS_CRYPTO += pk.c
 SRCS_CRYPTO += pk_ecc.c
 SRCS_CRYPTO += pk_wrap.c
@@ -103,6 +105,10 @@ SRCS_CRYPTO += sha1.c
 SRCS_CRYPTO += sha256.c
 SRCS_CRYPTO += sha3.c
 SRCS_CRYPTO += sha512.c
+# Certificate-chain parsing, needed by callers that verify a PIL firmware
+# image's attestation certificate chain from core.
+SRCS_CRYPTO += x509.c
+SRCS_CRYPTO += x509_crt.c
 endif
 
 # OBJS_X509
