@@ -1,5 +1,6 @@
 srcs-y += pta_qcom_pas.c
 srcs-y += pas_core.c
+srcs-y += auth/pil_elf_metadata.c
 incdirs-y += .
 incdirs-y += auth/
 incdirs-y += platform/
