@@ -65,6 +65,16 @@
 #define COMMON_META7_SIZE		0x18
 
 /*
+ * Accepted common-metadata versions: major must be 0; minor 1 additionally
+ * accepts the _ZI hash-table-algo variants over minor 0's set (both accept
+ * SHA-256/384 - the algorithms this port supports - so the two minors are
+ * otherwise equivalent here).
+ */
+#define COMMON_META7_MAJOR		0U
+#define COMMON_META7_MINOR_0		0U
+#define COMMON_META7_MINOR_1		1U
+
+/*
  * Hash-table digest algorithm identifiers carried in the v7 common
  * metadata's hash_table_algo field. Only SHA-256/384 are accepted; SHA-512
  * and every _ZI (zero-initialized-segment hashing, bit 31 set) variant fall
@@ -403,6 +413,7 @@ TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *md, size_t md_size,
 	const uint8_t *common_meta = NULL;
 	const uint8_t *seg = NULL;
 	size_t common_meta_len = 0;
+	uint32_t minor = 0;
 	uint32_t algo = 0;
 	size_t seg_size = 0;
 	size_t cursor = 0;
@@ -427,6 +438,18 @@ TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *md, size_t md_size,
 
 	if (!common_meta || common_meta_len < COMMON_META7_SIZE)
 		return TEE_ERROR_BAD_FORMAT;
+
+	if (pas_mbn_read_u32(common_meta + COMMON_META7_OFF_MAJOR) !=
+	    COMMON_META7_MAJOR) {
+		EMSG("PAS auth: unsupported v7 common-metadata version");
+		return TEE_ERROR_BAD_FORMAT;
+	}
+	minor = pas_mbn_read_u32(common_meta + COMMON_META7_OFF_MINOR);
+	if (minor != COMMON_META7_MINOR_0 && minor != COMMON_META7_MINOR_1) {
+		EMSG("PAS auth: unsupported v7 common-metadata minor %"PRIu32,
+		     minor);
+		return TEE_ERROR_BAD_FORMAT;
+	}
 
 	algo = pas_mbn_read_u32(common_meta + COMMON_META7_OFF_HASH_TABLE_ALGO);
 	switch (algo) {

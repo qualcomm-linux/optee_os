@@ -295,7 +295,8 @@ static TEE_Result check_serial_binding(const struct pas_meta *meta,
 /*
  * Bind the SoC family|device version against the metadata allow-list;
  * checked only when the SoC-HW-version binding is active (see
- * pas_meta_soc_vers_bound()).
+ * pas_meta_soc_vers_bound()). v7 additionally rejects a zero fused family
+ * number outright when the binding is active - v6 has no such guard.
  */
 static TEE_Result check_soc_vers_binding(const struct pas_meta *meta,
 					 uint32_t fam_dev)
@@ -304,6 +305,14 @@ static TEE_Result check_soc_vers_binding(const struct pas_meta *meta,
 
 	if (!pas_meta_soc_vers_bound(meta))
 		return TEE_SUCCESS;
+
+	if (meta->is_v7 && !fam_dev) {
+		EMSG("PAS auth: SOC_HW_VERSION family number is zero");
+		if (secboot_on)
+			return TEE_ERROR_SECURITY;
+		IMSG("PAS auth: zero SOC_HW_VERSION tolerated");
+		return TEE_SUCCESS;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(meta->soc_vers); i++) {
 		if (meta->soc_vers[i] == fam_dev)
