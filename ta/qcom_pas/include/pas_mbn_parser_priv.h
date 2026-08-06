@@ -16,7 +16,7 @@
  * (OEM/QTI metadata, signature and certificate regions).
  */
 
-/* MBN header field offsets (bytes from hash-segment start) */
+/* MBN header field offsets (bytes from hash-segment start), v5/v6 layout */
 #define MBN_OFF_VERSION		0x04
 #define MBN_OFF_QC_SIG_SIZE	0x08
 #define MBN_OFF_QC_CERT_SIZE	0x0c
@@ -29,8 +29,30 @@
 #define MBN_HDR_SIZE_V5		0x28
 #define MBN_HDR_SIZE_V6		0x30
 
+/*
+ * MBN v7 header field offsets (bytes from hash-segment start). v7 has a
+ * different field order than v5/v6 and adds a common-metadata size field
+ * shared by both signers; there is no v7 equivalent of MBN_OFF_VERSION at
+ * the same offset as v5/v6 header word 1, so v7 is decoded through its own
+ * offsets rather than reusing the MBN_OFF_* v5/v6 constants above.
+ */
+#define MBN_OFF_V7_VERSION		0x04
+#define MBN_OFF_V7_COMMON_META_SIZE	0x08
+#define MBN_OFF_V7_QC_META_SIZE		0x0c
+#define MBN_OFF_V7_OEM_META_SIZE	0x10
+#define MBN_OFF_V7_CODE_SIZE		0x14
+#define MBN_OFF_V7_QC_SIG_SIZE		0x18
+#define MBN_OFF_V7_QC_CERT_SIZE	0x1c
+#define MBN_OFF_V7_OEM_SIG_SIZE	0x20
+#define MBN_OFF_V7_OEM_CERT_SIZE	0x24
+
+#define MBN_HDR_SIZE_V7			0x28
+
 /* Read a little-endian uint32_t from @p. */
 uint32_t pas_mbn_read_u32(const uint8_t *p);
+
+/* Read a little-endian uint64_t from @p. */
+uint64_t pas_mbn_read_u64(const uint8_t *p);
 
 /*
  * pas_mbn_locate() - locate the MBN hash segment inside an INIT_IMAGE blob
