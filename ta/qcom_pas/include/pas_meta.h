@@ -54,8 +54,8 @@ TEE_Result pas_meta_peek_root_cert_sel(const uint8_t *meta_data,
 
 /*
  * pas_meta_peek_hash_table_algo() - read the v7 segment-hash digest size
- * @md:		 INIT_IMAGE metadata blob (ELF preamble + hash segment)
- * @md_size:	 size of @md in bytes
+ * @meta_data:      INIT_IMAGE metadata blob (ELF preamble + hash segment)
+ * @meta_data_size: size of @meta_data in bytes
  * @hash_size:	 decoded digest size (32 or 48) on success
  *
  * MBN v7 selects the segment hash-table's digest algorithm via the common
@@ -67,7 +67,8 @@ TEE_Result pas_meta_peek_root_cert_sel(const uint8_t *meta_data,
  * Returns TEE_ERROR_NOT_SUPPORTED for an unrecognized algorithm,
  * TEE_ERROR_BAD_FORMAT on a malformed segment.
  */
-TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *md, size_t md_size,
+TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *meta_data,
+					 size_t meta_data_size,
 					 uint32_t *hash_size);
 
 /*

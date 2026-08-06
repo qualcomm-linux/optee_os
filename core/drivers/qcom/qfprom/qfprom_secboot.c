@@ -31,18 +31,17 @@ register_phys_mem_pgdir(MEM_AREA_IO_SEC, TCSR_SOC_HW_VERSION_ADDR,
 
 TEE_Result qcom_secboot_is_enabled(bool *enabled)
 {
-	struct qfprom_context *drv = qfprom_get_context();
-	uint32_t val = 0;
+	vaddr_t va = 0;
 
 	if (!enabled)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	if (!drv->raw_base_va)
+	va = (vaddr_t)phys_to_virt(SECURE_BOOT_APPS_ADDR, MEM_AREA_IO_SEC,
+				   sizeof(uint32_t));
+	if (!va)
 		return TEE_ERROR_BAD_STATE;
 
-	val = io_read32(drv->raw_base_va +
-			(SECURE_BOOT_APPS_ADDR - SECURITY_CONTROL_BASE));
-	*enabled = (val & SECURE_BOOT_AUTH_EN_BMSK) != 0;
+	*enabled = (io_read32(va) & SECURE_BOOT_AUTH_EN_BMSK) != 0;
 
 	return TEE_SUCCESS;
 }
@@ -55,18 +54,17 @@ TEE_Result qcom_secboot_is_enabled(bool *enabled)
  */
 TEE_Result qcom_secboot_get_use_serial_num(bool *enabled)
 {
-	struct qfprom_context *drv = qfprom_get_context();
-	uint32_t val = 0;
+	vaddr_t va = 0;
 
 	if (!enabled)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	if (!drv->raw_base_va)
+	va = (vaddr_t)phys_to_virt(SECURE_BOOT_APPS_ADDR, MEM_AREA_IO_SEC,
+				   sizeof(uint32_t));
+	if (!va)
 		return TEE_ERROR_BAD_STATE;
 
-	val = io_read32(drv->raw_base_va +
-			(SECURE_BOOT_APPS_ADDR - SECURITY_CONTROL_BASE));
-	*enabled = (val & SECURE_BOOT_USE_SERIAL_NUM_BMSK) != 0;
+	*enabled = (io_read32(va) & SECURE_BOOT_USE_SERIAL_NUM_BMSK) != 0;
 
 	return TEE_SUCCESS;
 }
@@ -121,12 +119,13 @@ TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len)
 
 static TEE_Result read_sense_reg(paddr_t pa, uint32_t *out)
 {
-	struct qfprom_context *drv = qfprom_get_context();
+	vaddr_t va = (vaddr_t)phys_to_virt(pa, MEM_AREA_IO_SEC,
+					   sizeof(uint32_t));
 
-	if (!drv->raw_base_va)
+	if (!va)
 		return TEE_ERROR_BAD_STATE;
 
-	*out = io_read32(drv->raw_base_va + (pa - SECURITY_CONTROL_BASE));
+	*out = io_read32(va);
 
 	return TEE_SUCCESS;
 }

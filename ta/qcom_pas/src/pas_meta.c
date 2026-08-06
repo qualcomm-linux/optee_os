@@ -405,34 +405,37 @@ bool pas_meta7_flags_valid(uint32_t flags)
 	return true;
 }
 
-TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *md, size_t md_size,
+TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *meta_data,
+					 size_t meta_data_size,
 					 uint32_t *hash_size)
 {
 	TEE_Result res = TEE_ERROR_GENERIC;
 	uint32_t common_meta_size = 0;
 	const uint8_t *common_meta = NULL;
-	const uint8_t *seg = NULL;
+	const uint8_t *segment = NULL;
 	size_t common_meta_len = 0;
 	uint32_t minor = 0;
 	uint32_t algo = 0;
-	size_t seg_size = 0;
-	size_t cursor = 0;
+	size_t segment_size = 0;
+	size_t offset = 0;
 
-	if (!md || !md_size || !hash_size)
+	if (!meta_data || !meta_data_size || !hash_size)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	res = pas_mbn_locate(md, md_size, &seg, &seg_size, NULL);
+	res = pas_mbn_locate(meta_data, meta_data_size, &segment,
+			     &segment_size);
 	if (res)
 		return res;
 
-	if (seg_size < MBN_HDR_SIZE_V7)
+	if (segment_size < MBN_HDR_SIZE_V7)
 		return TEE_ERROR_BAD_FORMAT;
 
-	common_meta_size = pas_mbn_read_u32(seg +
+	common_meta_size = pas_mbn_read_u32(segment +
 					    MBN_OFF_V7_COMMON_META_SIZE);
-	cursor = MBN_HDR_SIZE_V7;
-	res = pas_mbn_take_region(seg, seg_size, &cursor, common_meta_size,
-				  &common_meta, &common_meta_len);
+	offset = MBN_HDR_SIZE_V7;
+	res = pas_mbn_reserve_region(segment, segment_size, &offset,
+				     common_meta_size, &common_meta,
+				     &common_meta_len);
 	if (res)
 		return res;
 

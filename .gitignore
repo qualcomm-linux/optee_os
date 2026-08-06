@@ -1,5 +1,5 @@
-/compile_commands.json
-/cscope.*
+compile_commands.json
+cscope.*
 /tags
 /TAGS
 /out
