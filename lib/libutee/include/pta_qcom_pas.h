@@ -84,4 +84,27 @@
  */
 #define PTA_QCOM_PAS_SHUTDOWN			8
 
-#endif /* __PTA_QCOM_REMOTEPROC_H */
+/*
+ * PAS firmware image integrity verification.
+ *
+ * Recomputes the per-segment digests of the firmware already loaded into its
+ * carveout and compares them to a caller-supplied hash table. The caller is
+ * responsible for ensuring the hash table is trusted (e.g. the PAS user TA
+ * performs metadata parsing and, when signature authentication is enabled,
+ * anchors the table to the fused root-of-trust before invoking this command).
+ *
+ * [in]  params[0].value.a:	Unique 32bit remote processor identifier
+ * [in]  params[0].value.b:	Firmware size
+ * [in]  params[1].value.a:	32bit LSB firmware memory address
+ * [in]  params[1].value.b:	32bit MSB firmware memory address
+ * [in]  params[2].memref:	Packed [metadata | hash_table] buffer: the
+ *				INIT_IMAGE metadata blob (ELF header + phdrs)
+ *				followed immediately by the per-segment
+ *				hash table (one digest per phdr)
+ * [in]  params[3].value.a:	Digest size in bytes (32=SHA-256, 48=SHA-384)
+ * [in]  params[3].value.b:	Metadata size, i.e. offset of hash_table
+ *				within params[2].memref
+ */
+#define PTA_QCOM_PAS_VERIFY_IMAGE		9
+
+#endif /* __PTA_QCOM_PAS_H */
