@@ -192,11 +192,64 @@ static uint32_t qcom_rcg_window(uint16_t dfs_states)
 	       0x4 * (dfs_states ? dfs_states - 1 : 0);
 }
 
-static vaddr_t qcom_clk_gcc_base(void)
+/*
+ * Resolve a BSP register address to a VA. Windows are registered statically by
+ * the platform BSP (register_phys_mem), so this is a lookup, not a mapping.
+ * @pa must already have been bounds-checked against @win.
+ */
+static vaddr_t qcom_clk_reg_va(const struct qcom_clk_window *win, paddr_t pa)
 {
-	struct io_pa_va gcc_io = { .pa = GCC_BASE };
+	struct io_pa_va io = { };
+	vaddr_t base = 0;
 
-	return io_pa_or_va(&gcc_io, GCC_SIZE);
+	if (!win || !win->pa || !win->size)
+		return 0;
+
+	io.pa = win->pa;
+
+	base = io_pa_or_va(&io, win->size);
+	if (!base)
+		return 0;
+
+	return base + (pa - win->pa);
+}
+
+/* True if the word at @pa lies wholly inside @win. */
+static bool qcom_clk_reg_in_window(const struct qcom_clk_window *win,
+				   paddr_t pa, size_t span)
+{
+	if (!win || !win->size || pa < win->pa)
+		return false;
+
+	return pa - win->pa + span + sizeof(uint32_t) <= win->size;
+}
+
+/*
+ * Bounds-check every address a domain hands the walker against its own window,
+ * so a bad BSP row cannot turn into an out-of-window register access.
+ */
+static bool qcom_domain_addrs_valid(const struct qcom_clk_domain *domain,
+				    bool need_rcg)
+{
+	const struct qcom_clk_window *win = domain->window;
+
+	if (!win || !win->size)
+		return false;
+
+	if (!qcom_clk_reg_in_window(win, domain->cbcr_addr, 0))
+		return false;
+
+	if (!qcom_clk_reg_in_window(win, domain->vote_reg_addr, 0))
+		return false;
+
+	if (!need_rcg)
+		return true;
+
+	if (!domain->cmd_rcgr_addr)
+		return false;
+
+	return qcom_clk_reg_in_window(win, domain->cmd_rcgr_addr,
+				      qcom_rcg_window(domain->dfs_states));
 }
 
 /*
@@ -263,7 +316,8 @@ qcom_find_config(const struct qcom_clk_domain *domain, uint32_t freq_hz)
  * GCC write, not RPMh. XO has no source-vote entry and is skipped; the vote
  * is left in place afterwards (no per-rate un-vote).
  */
-static void qcom_clk_src_vote(vaddr_t gcc_base, uint32_t mux_sel)
+static void qcom_clk_src_vote(const struct qcom_clk_window *win,
+			      uint32_t mux_sel)
 {
 	const struct qcom_clk_bsp *bsp = qcom_clk_bsp_get();
 	uint32_t i = 0;
@@ -273,11 +327,23 @@ static void qcom_clk_src_vote(vaddr_t gcc_base, uint32_t mux_sel)
 
 	for (i = 0; i < bsp->n_src_votes; i++) {
 		const struct qcom_clk_src_vote *sv = &bsp->src_votes[i];
+		vaddr_t vote = 0;
 
-		if (sv->mux_sel != mux_sel)
+		/*
+		 * Each quadrant controller has its own GPLL0 reachable through
+		 * the same mux index, so the window is part of the key.
+		 */
+		if (sv->mux_sel != mux_sel || sv->window != win)
 			continue;
 
-		io_setbits32(gcc_base + sv->vote_reg_offset, BIT(sv->vote_bit));
+		if (!qcom_clk_reg_in_window(win, sv->vote_reg_addr, 0))
+			return;
+
+		vote = qcom_clk_reg_va(win, sv->vote_reg_addr);
+		if (!vote)
+			return;
+
+		io_setbits32(vote, BIT(sv->vote_bit));
 		return;
 	}
 }
@@ -292,29 +358,22 @@ static TEE_Result qcom_domain_set_rate(const struct qcom_clk_domain *domain,
 				       uint32_t *res_hz)
 {
 	const struct qcom_clk_mux_config *cfg = NULL;
-	vaddr_t gcc_base = 0;
 	vaddr_t cgr = 0;
 	uint32_t val = 0;
 	uint16_t prev = corner ? *corner : 0;
 	uint16_t next = prev;
 	TEE_Result res = TEE_SUCCESS;
 
-	if (!domain || !domain->cmd_rcgr_offset)
-		return TEE_ERROR_BAD_PARAMETERS;
-
-	if (domain->cmd_rcgr_offset + qcom_rcg_window(domain->dfs_states) >=
-	    GCC_SIZE)
+	if (!domain || !qcom_domain_addrs_valid(domain, true))
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	cfg = qcom_find_config(domain, freq_hz);
 	if (!cfg)
 		return TEE_ERROR_ITEM_NOT_FOUND;
 
-	gcc_base = qcom_clk_gcc_base();
-	if (!gcc_base)
+	cgr = qcom_clk_reg_va(domain->window, domain->cmd_rcgr_addr);
+	if (!cgr)
 		return TEE_ERROR_GENERIC;
-
-	cgr = gcc_base + domain->cmd_rcgr_offset;
 
 	if (corner && cfg->cx_level)
 		next = cfg->cx_level;
@@ -327,7 +386,7 @@ static TEE_Result qcom_domain_set_rate(const struct qcom_clk_domain *domain,
 		*corner = next;
 	}
 
-	qcom_clk_src_vote(gcc_base, cfg->mux_sel);
+	qcom_clk_src_vote(domain->window, cfg->mux_sel);
 
 	qcom_config_mux_offs(cgr, cfg, QCOM_RCG_CFG_REG_OFFSET,
 			     QCOM_RCG_M_REG_OFFSET, QCOM_RCG_N_REG_OFFSET,
@@ -353,22 +412,16 @@ static TEE_Result qcom_domain_set_rate(const struct qcom_clk_domain *domain,
 static TEE_Result
 qcom_clock_domain_enable_dfs(const struct qcom_clk_domain *domain)
 {
-	vaddr_t gcc_base = 0;
 	vaddr_t cgr = 0;
 	uint32_t i = 0;
 
-	if (!domain || !domain->cmd_rcgr_offset || !domain->dfs_states)
+	if (!domain || !domain->dfs_states ||
+	    !qcom_domain_addrs_valid(domain, true))
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	if (domain->cmd_rcgr_offset + qcom_rcg_window(domain->dfs_states) >=
-	    GCC_SIZE)
-		return TEE_ERROR_BAD_PARAMETERS;
-
-	gcc_base = qcom_clk_gcc_base();
-	if (!gcc_base)
+	cgr = qcom_clk_reg_va(domain->window, domain->cmd_rcgr_addr);
+	if (!cgr)
 		return TEE_ERROR_GENERIC;
-
-	cgr = gcc_base + domain->cmd_rcgr_offset;
 
 	for (i = 0; i < domain->n_configs; i++) {
 		const struct qcom_clk_mux_config *c = &domain->configs[i];
@@ -447,16 +500,20 @@ static TEE_Result qcom_qup_clk_enable(struct clk *clk)
 {
 	struct qcom_qup_clk *qup = clk->priv;
 	const struct qcom_clk_domain *dom = qup->domain;
-	vaddr_t gcc_base = qcom_clk_gcc_base();
 	vaddr_t cbcr = 0;
+	vaddr_t vote = 0;
 	int ret = 0;
 
-	if (!gcc_base || !dom->cbcr_offset || !dom->vote_reg_offset)
+	if (!dom->cbcr_addr || !dom->vote_reg_addr ||
+	    !qcom_domain_addrs_valid(dom, false))
 		return TEE_ERROR_BAD_STATE;
 
-	cbcr = gcc_base + dom->cbcr_offset;
+	cbcr = qcom_clk_reg_va(dom->window, dom->cbcr_addr);
+	vote = qcom_clk_reg_va(dom->window, dom->vote_reg_addr);
+	if (!cbcr || !vote)
+		return TEE_ERROR_BAD_STATE;
 
-	io_setbits32(gcc_base + dom->vote_reg_offset, BIT(dom->vote_bit));
+	io_setbits32(vote, BIT(dom->vote_bit));
 
 	if (io_read32(cbcr) & CBCR_HW_CTL_ENABLE_BIT)
 		return TEE_SUCCESS;
@@ -470,16 +527,20 @@ static void qcom_qup_clk_disable(struct clk *clk)
 {
 	struct qcom_qup_clk *qup = clk->priv;
 	const struct qcom_clk_domain *dom = qup->domain;
-	vaddr_t gcc_base = qcom_clk_gcc_base();
 	vaddr_t cbcr = 0;
+	vaddr_t vote = 0;
 	int ret = 0;
 
-	if (!gcc_base || !dom->cbcr_offset || !dom->vote_reg_offset)
+	if (!dom->cbcr_addr || !dom->vote_reg_addr ||
+	    !qcom_domain_addrs_valid(dom, false))
 		return;
 
-	cbcr = gcc_base + dom->cbcr_offset;
+	cbcr = qcom_clk_reg_va(dom->window, dom->cbcr_addr);
+	vote = qcom_clk_reg_va(dom->window, dom->vote_reg_addr);
+	if (!cbcr || !vote)
+		return;
 
-	io_clrbits32(gcc_base + dom->vote_reg_offset, BIT(dom->vote_bit));
+	io_clrbits32(vote, BIT(dom->vote_bit));
 
 	/* HW_CTL drives the off-state; polling CLK_OFF would spin. */
 	if (io_read32(cbcr) & CBCR_HW_CTL_ENABLE_BIT)
