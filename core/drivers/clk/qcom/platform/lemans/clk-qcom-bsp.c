@@ -2,14 +2,19 @@
 /*
  * Copyright (c) 2026, Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
- * Per-target QUP serial-engine clock BSP for Lemans (Hoya family).
+ * Per-target QUP clock BSP for Lemans (Hoya family): the per-SE serial-
+ * engine RCGs plus the QUPv3 wrapper-level gating clocks (core/core_2x/
+ * m_ahb/s_ahb).
  *
- * All register fields are stored GCC-relative; the walker resolves each as
- * gcc_base + offset.
+ * All register locations are full physical addresses composed from GCC_BASE;
+ * the walker resolves each against the domain's window.
  */
 
 #include <drivers/clk_qcom_bsp.h>
+#include <platform_config.h>
 #include <util.h>
+
+#include "clock_group_qcom.h"
 
 /* Resolved RCG SRC_SEL mux indices. */
 #define MUX_XO			0
@@ -83,40 +88,50 @@ static const struct qcom_clk_mux_config qup_se_403mhz[] = {
 };
 
 /*
- * On QUPv3 the SE's CBCR sits 8 bytes below its CMD_RCGR, so derive it here
- * rather than carrying a second offset column.
+ * Lemans routes every QUP register -- SE RCGs, wrapper CBCRs and all the
+ * shared vote registers -- through the single central GCC window, so one
+ * window backs every domain below.
  */
-#define QUP_SE_CBCR_FROM_RCGR(_cmd_rcgr)	((_cmd_rcgr) - 8)
-
-/*
- * QUP SE branches gate through a shared vote register, not their own CBCR.
- * Register/bit assignment is per-target and per-SE, so it is listed per domain.
- */
-#define GCC_CLOCK_BRANCH_ENA_VOTE	0x3e040
-#define GCC_CLOCK_BRANCH_ENA_VOTE_1	0x3e048
-#define GCC_CLOCK_BRANCH_ENA_VOTE_2	0x3e050
-#define GCC_CLOCK_BRANCH_ENA_VOTE_3	0x3e058
+static const struct qcom_clk_window gcc_window = {
+	.pa = GCC_BASE,
+	.size = GCC_SIZE,
+};
 
 /*
  * PLL source-vote table, keyed by @mux_sel; XO (MUX_XO) has no entry and is
  * not voted. Direct GCC write, not RPMh.
  */
-#define GCC_PLL_BRANCH_ENA_VOTE		0x3e068
-#define GCC_PLL_VOTE_BIT_GPLL0		0
-#define GCC_PLL_VOTE_BIT_GPLL4		4
-
 static const struct qcom_clk_src_vote qup_se_src_votes[] = {
 	/* GPLL0_DIV2 is the /2 output of GPLL0; voting GPLL0 holds it on. */
-	{ MUX_GPLL0_DIV2, GCC_PLL_BRANCH_ENA_VOTE, GCC_PLL_VOTE_BIT_GPLL0 },
-	{ MUX_GPLL4,      GCC_PLL_BRANCH_ENA_VOTE, GCC_PLL_VOTE_BIT_GPLL4 },
+	{ &gcc_window, MUX_GPLL0_DIV2, GCC_PLL_BRANCH_ENA_VOTE,
+	  GCC_PLL_VOTE_BIT_GPLL0 },
+	{ &gcc_window, MUX_GPLL4, GCC_PLL_BRANCH_ENA_VOTE,
+	  GCC_PLL_VOTE_BIT_GPLL4 },
 };
 
-#define QUP_SE_DOMAIN(_name, _cmd_rcgr, _plan, _vote_reg, _vote_bit)	\
+/*
+ * QUPv3 wrapper-level branch clock (core/core_2x/m_ahb/s_ahb): no RCG, no
+ * frequency plan -- enable/disable only, via the same shared vote register +
+ * CBCR poll qcom_qup_clk_ops already implements for the SE branches above.
+ * Rate scaling for these is delegated to RPMh BCM/AOP, outside OP-TEE's
+ * scope.
+ */
+#define QUP_BRANCH_CLK(_name, _cbcr, _vote_reg, _vote_bit)		\
 	{								\
 		.name = (_name),					\
-		.cmd_rcgr_offset = (_cmd_rcgr),				\
-		.cbcr_offset = QUP_SE_CBCR_FROM_RCGR(_cmd_rcgr),	\
-		.vote_reg_offset = (_vote_reg),				\
+		.window = &gcc_window,					\
+		.cbcr_addr = (_cbcr),					\
+		.vote_reg_addr = (_vote_reg),				\
+		.vote_bit = (_vote_bit),				\
+	}
+
+#define QUP_SE_DOMAIN(_name, _cmd_rcgr, _cbcr, _plan, _vote_reg, _vote_bit) \
+	{								\
+		.name = (_name),					\
+		.window = &gcc_window,					\
+		.cmd_rcgr_addr = (_cmd_rcgr),				\
+		.cbcr_addr = (_cbcr),					\
+		.vote_reg_addr = (_vote_reg),				\
 		.vote_bit = (_vote_bit),				\
 		.dfs_states = QUP_SE_DFS_STATES,			\
 		.configs = (_plan),					\
@@ -125,59 +140,156 @@ static const struct qcom_clk_src_vote qup_se_src_votes[] = {
 
 static const struct qcom_clk_domain qup_se_domains[] = {
 	/* QUPv3 wrapper 0: S0-S1 at 120 MHz, S2-S6 at 100 MHz. All VOTE_1. */
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s0_clk", 0x13154, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 10),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s1_clk", 0x13288, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 11),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s2_clk", 0x133bc, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 12),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s3_clk", 0x134f0, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 13),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s4_clk", 0x13624, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 14),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s5_clk", 0x13758, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 15),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s6_clk", 0x1388c, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 16),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s0_clk",
+		      GCC_QUPV3_WRAP0_S0_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S0_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S0_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s1_clk",
+		      GCC_QUPV3_WRAP0_S1_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S1_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S1_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s2_clk",
+		      GCC_QUPV3_WRAP0_S2_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S2_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S2_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s3_clk",
+		      GCC_QUPV3_WRAP0_S3_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S3_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S3_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s4_clk",
+		      GCC_QUPV3_WRAP0_S4_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S4_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S4_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s5_clk",
+		      GCC_QUPV3_WRAP0_S5_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S5_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S5_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap0_s6_clk",
+		      GCC_QUPV3_WRAP0_S6_CMD_RCGR,
+		      GCC_QUPV3_WRAP0_S6_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_S6_SHFT),
 
 	/*
 	 * QUPv3 wrapper 1: S0-S1 at 120 MHz, S2-S6 at 100 MHz. S0-S5 VOTE_1,
 	 * S6 VOTE_3.
 	 */
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s0_clk", 0x14154, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 22),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s1_clk", 0x14288, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 23),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s2_clk", 0x143bc, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 24),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s3_clk", 0x144f0, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 25),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s4_clk", 0x14624, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 26),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s5_clk", 0x14758, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_1, 27),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s6_clk", 0x1488c, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_3, 27),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s0_clk",
+		      GCC_QUPV3_WRAP1_S0_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S0_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S0_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s1_clk",
+		      GCC_QUPV3_WRAP1_S1_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S1_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S1_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s2_clk",
+		      GCC_QUPV3_WRAP1_S2_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S2_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S2_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s3_clk",
+		      GCC_QUPV3_WRAP1_S3_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S3_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S3_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s4_clk",
+		      GCC_QUPV3_WRAP1_S4_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S4_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S4_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s5_clk",
+		      GCC_QUPV3_WRAP1_S5_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S5_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_S5_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap1_s6_clk",
+		      GCC_QUPV3_WRAP1_S6_CMD_RCGR,
+		      GCC_QUPV3_WRAP1_S6_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_3, QUPV3_WRAP1_S6_SHFT),
 
 	/* QUPv3 wrap2: S0-S1 120MHz, S2-S6 100MHz. S0-S5 VOTE_2, S6 VOTE_3. */
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s0_clk", 0x1a154, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 4),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s1_clk", 0x1a288, qup_se_120mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 5),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s2_clk", 0x1a3bc, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 6),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s3_clk", 0x1a4f0, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 7),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s4_clk", 0x1a624, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 8),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s5_clk", 0x1a758, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_2, 9),
-	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s6_clk", 0x1a88c, qup_se_100mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE_3, 29),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s0_clk",
+		      GCC_QUPV3_WRAP2_S0_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S0_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S0_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s1_clk",
+		      GCC_QUPV3_WRAP2_S1_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S1_CBCR, qup_se_120mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S1_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s2_clk",
+		      GCC_QUPV3_WRAP2_S2_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S2_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S2_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s3_clk",
+		      GCC_QUPV3_WRAP2_S3_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S3_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S3_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s4_clk",
+		      GCC_QUPV3_WRAP2_S4_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S4_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S4_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s5_clk",
+		      GCC_QUPV3_WRAP2_S5_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S5_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_S5_SHFT),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap2_s6_clk",
+		      GCC_QUPV3_WRAP2_S6_CMD_RCGR,
+		      GCC_QUPV3_WRAP2_S6_CBCR, qup_se_100mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE_3, QUPV3_WRAP2_S6_SHFT),
 
 	/* QUPv3 wrapper 3: S0 only, at 403.2 MHz. VOTE (base). */
-	QUP_SE_DOMAIN("gcc_qupv3_wrap3_s0_clk", 0xb4154, qup_se_403mhz,
-		      GCC_CLOCK_BRANCH_ENA_VOTE, 25),
+	QUP_SE_DOMAIN("gcc_qupv3_wrap3_s0_clk",
+		      GCC_QUPV3_WRAP3_S0_CMD_RCGR,
+		      GCC_QUPV3_WRAP3_S0_CBCR, qup_se_403mhz,
+		      GCC_CLOCK_BRANCH_ENA_VOTE, QUPV3_WRAP3_S0_SHFT),
+
+	/* QUPv3 wrapper-level branch clocks: enable/disable only, no RCG. */
+	QUP_BRANCH_CLK("gcc_qupv3_wrap0_core_2x_clk",
+		       GCC_QUPV3_WRAP0_CORE_2X_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_CORE_2X_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap0_core_clk",
+		       GCC_QUPV3_WRAP0_CORE_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP0_CORE_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_0_m_ahb_clk",
+		       GCC_QUPV3_WRAP_0_M_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP_0_M_AHB_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_0_s_ahb_clk",
+		       GCC_QUPV3_WRAP_0_S_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP_0_S_AHB_SHFT),
+
+	QUP_BRANCH_CLK("gcc_qupv3_wrap1_core_2x_clk",
+		       GCC_QUPV3_WRAP1_CORE_2X_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_CORE_2X_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap1_core_clk",
+		       GCC_QUPV3_WRAP1_CORE_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP1_CORE_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_1_m_ahb_clk",
+		       GCC_QUPV3_WRAP_1_M_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP_1_M_AHB_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_1_s_ahb_clk",
+		       GCC_QUPV3_WRAP_1_S_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_1, QUPV3_WRAP_1_S_AHB_SHFT),
+
+	QUP_BRANCH_CLK("gcc_qupv3_wrap2_core_2x_clk",
+		       GCC_QUPV3_WRAP2_CORE_2X_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_CORE_2X_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap2_core_clk",
+		       GCC_QUPV3_WRAP2_CORE_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP2_CORE_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_2_m_ahb_clk",
+		       GCC_QUPV3_WRAP_2_M_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP_2_M_AHB_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_2_s_ahb_clk",
+		       GCC_QUPV3_WRAP_2_S_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE_2, QUPV3_WRAP_2_S_AHB_SHFT),
+
+	QUP_BRANCH_CLK("gcc_qupv3_wrap3_core_2x_clk",
+		       GCC_QUPV3_WRAP3_CORE_2X_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE, QUPV3_WRAP3_CORE_2X_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap3_core_clk",
+		       GCC_QUPV3_WRAP3_CORE_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE, QUPV3_WRAP3_CORE_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_3_m_ahb_clk",
+		       GCC_QUPV3_WRAP_3_M_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE, QUPV3_WRAP_3_M_AHB_SHFT),
+	QUP_BRANCH_CLK("gcc_qupv3_wrap_3_s_ahb_clk",
+		       GCC_QUPV3_WRAP_3_S_AHB_CBCR,
+		       GCC_CLOCK_BRANCH_ENA_VOTE, QUPV3_WRAP_3_S_AHB_SHFT),
 };
 
 static const struct qcom_clk_bsp lemans_clk_bsp = {

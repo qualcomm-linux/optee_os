@@ -5,6 +5,8 @@
 #ifndef _CLOCK_GROUP_QCOM_H_
 #define _CLOCK_GROUP_QCOM_H_
 
+#include <platform_config.h>
+
 #define GCC_SEC_CTRL_CFG_RCGR			0x39038
 #define GCC_SEC_CTRL_CMD_RCGR			0x39034
 #define QFPROM_CLOCK_DIVIDE			0x7
@@ -226,9 +228,163 @@
 
 #ifdef CFG_QCOM_CLK_BSP
 /*
+ * QUPv3 serial-engine CBCRs and their RCGs. Each is a full physical address,
+ * formed from the central GCC base exactly as the HWIO_GCC_..._ADDR counterpart
+ * in the lemans xbl_sec HWIO header does, and named after that counterpart with
+ * the HWIO_ prefix dropped. Both registers are listed per SE: the
+ * CBCR-to-CMD_RCGR distance happens to be 8 here but is not architectural (nord
+ * uses 0x10, and neither for its wrapper 3), so nothing derives one from the
+ * other.
+ */
+#define GCC_QUPV3_WRAP0_S0_CBCR			(GCC_BASE + 0x1314c)
+#define GCC_QUPV3_WRAP0_S0_CMD_RCGR		(GCC_BASE + 0x13154)
+#define GCC_QUPV3_WRAP0_S1_CBCR			(GCC_BASE + 0x13280)
+#define GCC_QUPV3_WRAP0_S1_CMD_RCGR		(GCC_BASE + 0x13288)
+#define GCC_QUPV3_WRAP0_S2_CBCR			(GCC_BASE + 0x133b4)
+#define GCC_QUPV3_WRAP0_S2_CMD_RCGR		(GCC_BASE + 0x133bc)
+#define GCC_QUPV3_WRAP0_S3_CBCR			(GCC_BASE + 0x134e8)
+#define GCC_QUPV3_WRAP0_S3_CMD_RCGR		(GCC_BASE + 0x134f0)
+#define GCC_QUPV3_WRAP0_S4_CBCR			(GCC_BASE + 0x1361c)
+#define GCC_QUPV3_WRAP0_S4_CMD_RCGR		(GCC_BASE + 0x13624)
+#define GCC_QUPV3_WRAP0_S5_CBCR			(GCC_BASE + 0x13750)
+#define GCC_QUPV3_WRAP0_S5_CMD_RCGR		(GCC_BASE + 0x13758)
+#define GCC_QUPV3_WRAP0_S6_CBCR			(GCC_BASE + 0x13884)
+#define GCC_QUPV3_WRAP0_S6_CMD_RCGR		(GCC_BASE + 0x1388c)
+
+#define GCC_QUPV3_WRAP1_S0_CBCR			(GCC_BASE + 0x1414c)
+#define GCC_QUPV3_WRAP1_S0_CMD_RCGR		(GCC_BASE + 0x14154)
+#define GCC_QUPV3_WRAP1_S1_CBCR			(GCC_BASE + 0x14280)
+#define GCC_QUPV3_WRAP1_S1_CMD_RCGR		(GCC_BASE + 0x14288)
+#define GCC_QUPV3_WRAP1_S2_CBCR			(GCC_BASE + 0x143b4)
+#define GCC_QUPV3_WRAP1_S2_CMD_RCGR		(GCC_BASE + 0x143bc)
+#define GCC_QUPV3_WRAP1_S3_CBCR			(GCC_BASE + 0x144e8)
+#define GCC_QUPV3_WRAP1_S3_CMD_RCGR		(GCC_BASE + 0x144f0)
+#define GCC_QUPV3_WRAP1_S4_CBCR			(GCC_BASE + 0x1461c)
+#define GCC_QUPV3_WRAP1_S4_CMD_RCGR		(GCC_BASE + 0x14624)
+#define GCC_QUPV3_WRAP1_S5_CBCR			(GCC_BASE + 0x14750)
+#define GCC_QUPV3_WRAP1_S5_CMD_RCGR		(GCC_BASE + 0x14758)
+#define GCC_QUPV3_WRAP1_S6_CBCR			(GCC_BASE + 0x14884)
+#define GCC_QUPV3_WRAP1_S6_CMD_RCGR		(GCC_BASE + 0x1488c)
+
+#define GCC_QUPV3_WRAP2_S0_CBCR			(GCC_BASE + 0x1a14c)
+#define GCC_QUPV3_WRAP2_S0_CMD_RCGR		(GCC_BASE + 0x1a154)
+#define GCC_QUPV3_WRAP2_S1_CBCR			(GCC_BASE + 0x1a280)
+#define GCC_QUPV3_WRAP2_S1_CMD_RCGR		(GCC_BASE + 0x1a288)
+#define GCC_QUPV3_WRAP2_S2_CBCR			(GCC_BASE + 0x1a3b4)
+#define GCC_QUPV3_WRAP2_S2_CMD_RCGR		(GCC_BASE + 0x1a3bc)
+#define GCC_QUPV3_WRAP2_S3_CBCR			(GCC_BASE + 0x1a4e8)
+#define GCC_QUPV3_WRAP2_S3_CMD_RCGR		(GCC_BASE + 0x1a4f0)
+#define GCC_QUPV3_WRAP2_S4_CBCR			(GCC_BASE + 0x1a61c)
+#define GCC_QUPV3_WRAP2_S4_CMD_RCGR		(GCC_BASE + 0x1a624)
+#define GCC_QUPV3_WRAP2_S5_CBCR			(GCC_BASE + 0x1a750)
+#define GCC_QUPV3_WRAP2_S5_CMD_RCGR		(GCC_BASE + 0x1a758)
+#define GCC_QUPV3_WRAP2_S6_CBCR			(GCC_BASE + 0x1a884)
+#define GCC_QUPV3_WRAP2_S6_CMD_RCGR		(GCC_BASE + 0x1a88c)
+
+#define GCC_QUPV3_WRAP3_S0_CBCR			(GCC_BASE + 0xb414c)
+#define GCC_QUPV3_WRAP3_S0_CMD_RCGR		(GCC_BASE + 0xb4154)
+
+/*
+ * QUPv3 wrapper-level gating clocks (core/core_2x/m_ahb/s_ahb): no RCG backs
+ * these, just a CBCR gated through the shared vote-register family.
+ */
+#define GCC_QUPV3_WRAP_0_M_AHB_CBCR		(GCC_BASE + 0x13004)
+#define GCC_QUPV3_WRAP_0_S_AHB_CBCR		(GCC_BASE + 0x13008)
+#define GCC_QUPV3_WRAP0_CORE_CBCR		(GCC_BASE + 0x1300c)
+#define GCC_QUPV3_WRAP0_CORE_2X_CBCR		(GCC_BASE + 0x13018)
+
+#define GCC_QUPV3_WRAP_1_M_AHB_CBCR		(GCC_BASE + 0x14004)
+#define GCC_QUPV3_WRAP_1_S_AHB_CBCR		(GCC_BASE + 0x14008)
+#define GCC_QUPV3_WRAP1_CORE_CBCR		(GCC_BASE + 0x1400c)
+#define GCC_QUPV3_WRAP1_CORE_2X_CBCR		(GCC_BASE + 0x14018)
+
+#define GCC_QUPV3_WRAP_2_M_AHB_CBCR		(GCC_BASE + 0x1a004)
+#define GCC_QUPV3_WRAP_2_S_AHB_CBCR		(GCC_BASE + 0x1a008)
+#define GCC_QUPV3_WRAP2_CORE_CBCR		(GCC_BASE + 0x1a00c)
+#define GCC_QUPV3_WRAP2_CORE_2X_CBCR		(GCC_BASE + 0x1a018)
+
+#define GCC_QUPV3_WRAP_3_M_AHB_CBCR		(GCC_BASE + 0xb4004)
+#define GCC_QUPV3_WRAP_3_S_AHB_CBCR		(GCC_BASE + 0xb4008)
+#define GCC_QUPV3_WRAP3_CORE_CBCR		(GCC_BASE + 0xb400c)
+#define GCC_QUPV3_WRAP3_CORE_2X_CBCR		(GCC_BASE + 0xb4018)
+
+/*
+ * Shared branch-enable vote registers. QUP SE and wrapper branches gate
+ * through one of these rather than their own CBCR CLK_ENABLE bit; which
+ * register and bit a branch uses is per-target, so both are listed per domain
+ * in the BSP.
+ */
+#define GCC_CLOCK_BRANCH_ENA_VOTE		(GCC_BASE + 0x3e040)
+#define GCC_CLOCK_BRANCH_ENA_VOTE_1		(GCC_BASE + 0x3e048)
+#define GCC_CLOCK_BRANCH_ENA_VOTE_2		(GCC_BASE + 0x3e050)
+#define GCC_CLOCK_BRANCH_ENA_VOTE_3		(GCC_BASE + 0x3e058)
+
+/*
+ * QUPv3 SE and wrapper-level branch vote-register bit positions, named
+ * after their HWIO_GCC_APCS_TZ_CLOCK_BRANCH_ENA_VOTE*_..._CLK_ENA_SHFT
+ * counterparts in the lemans GCC HWIO header (_CLK_ENA dropped to fit
+ * 80 cols), so each vote_bit in the BSP traces back to a named field
+ * rather than a bare integer.
+ */
+
+/* Bits within GCC_CLOCK_BRANCH_ENA_VOTE (base). */
+#define QUPV3_WRAP3_S0_SHFT			25
+#define QUPV3_WRAP3_CORE_SHFT			23
+#define QUPV3_WRAP3_CORE_2X_SHFT		24
+#define QUPV3_WRAP_3_M_AHB_SHFT			27
+#define QUPV3_WRAP_3_S_AHB_SHFT			20
+
+/* Bits within GCC_CLOCK_BRANCH_ENA_VOTE_1. */
+#define QUPV3_WRAP0_S0_SHFT			10
+#define QUPV3_WRAP0_S1_SHFT			11
+#define QUPV3_WRAP0_S2_SHFT			12
+#define QUPV3_WRAP0_S3_SHFT			13
+#define QUPV3_WRAP0_S4_SHFT			14
+#define QUPV3_WRAP0_S5_SHFT			15
+#define QUPV3_WRAP0_S6_SHFT			16
+#define QUPV3_WRAP0_CORE_SHFT			8
+#define QUPV3_WRAP0_CORE_2X_SHFT		9
+#define QUPV3_WRAP_0_M_AHB_SHFT			6
+#define QUPV3_WRAP_0_S_AHB_SHFT			7
+#define QUPV3_WRAP1_S0_SHFT			22
+#define QUPV3_WRAP1_S1_SHFT			23
+#define QUPV3_WRAP1_S2_SHFT			24
+#define QUPV3_WRAP1_S3_SHFT			25
+#define QUPV3_WRAP1_S4_SHFT			26
+#define QUPV3_WRAP1_S5_SHFT			27
+#define QUPV3_WRAP1_CORE_SHFT			19
+#define QUPV3_WRAP1_CORE_2X_SHFT		18
+#define QUPV3_WRAP_1_M_AHB_SHFT			20
+#define QUPV3_WRAP_1_S_AHB_SHFT			21
+
+/* Bits within GCC_CLOCK_BRANCH_ENA_VOTE_2. */
+#define QUPV3_WRAP2_S0_SHFT			4
+#define QUPV3_WRAP2_S1_SHFT			5
+#define QUPV3_WRAP2_S2_SHFT			6
+#define QUPV3_WRAP2_S3_SHFT			7
+#define QUPV3_WRAP2_S4_SHFT			8
+#define QUPV3_WRAP2_S5_SHFT			9
+#define QUPV3_WRAP2_CORE_SHFT			0
+#define QUPV3_WRAP2_CORE_2X_SHFT		3
+#define QUPV3_WRAP_2_M_AHB_SHFT			2
+#define QUPV3_WRAP_2_S_AHB_SHFT			1
+
+/* Bits within GCC_CLOCK_BRANCH_ENA_VOTE_3. */
+#define QUPV3_WRAP1_S6_SHFT			27
+#define QUPV3_WRAP2_S6_SHFT			29
+
+/*
+ * GCC PLL branch-enable vote register and the bits for the PLLs the QUP SE
+ * RCGs source from. Direct GCC write, not RPMh.
+ */
+#define GCC_PLL_BRANCH_ENA_VOTE			(GCC_BASE + 0x3e068)
+#define GCC_PLL_VOTE_BIT_GPLL0			0
+#define GCC_PLL_VOTE_BIT_GPLL4			4
+
+/*
  * Root clock generator (RCG) register layout, common across register
  * revisions v1..v4. Offsets are relative to the domain's CMD_RCGR register
- * (qcom_clk_domain.cmd_rcgr_offset, itself GCC-relative).
+ * (qcom_clk_domain.cmd_rcgr_addr).
  */
 #define QCOM_RCG_CFG_REG_OFFSET			0x4
 #define QCOM_RCG_M_REG_OFFSET			0x8
