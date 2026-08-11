@@ -15,6 +15,15 @@ CFG_TA_RAM_VA_SIZE ?= 0x07B80000
 CFG_DRIVERS_CLK ?= y
 CFG_DRIVERS_QCOM_CLK ?= y
 
+# QUPv3 serial-engine (bus) clock set-rate/DFS walker, consumed on-demand by a
+# future TEE-side SPI/I2C driver. Set-rate votes CX/MX via RPMh, so pull
+# cmd_db/RPMh client in whenever the walker is built.
+CFG_QCOM_CLK_BSP ?= y
+ifeq ($(CFG_QCOM_CLK_BSP),y)
+$(call force,CFG_QCOM_CMD_DB,y)
+$(call force,CFG_QCOM_RPMH_CLIENT,y)
+endif
+
 ifneq ($(CFG_INSECURE),y)
 CFG_QCOM_QFPROM_FUSEPROV ?= y
 endif
