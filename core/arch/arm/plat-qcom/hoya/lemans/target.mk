@@ -24,3 +24,12 @@ CFG_QCOM_PAS_AUTH ?= y
 CFG_PAS_MD_SLOTS ?= 8
 endif
 CFG_QCOM_HWKM ?= y
+
+# QUPv3 serial-engine (bus) clock set-rate/DFS walker, consumed on-demand by a
+# future TEE-side SPI/I2C driver. Set-rate votes CX/MX via RPMh, so pull
+# cmd_db/RPMh client in whenever the walker is built.
+CFG_QCOM_CLK_BSP ?= y
+ifeq ($(CFG_QCOM_CLK_BSP),y)
+$(call force,CFG_QCOM_CMD_DB,y)
+$(call force,CFG_QCOM_RPMH_CLIENT,y)
+endif

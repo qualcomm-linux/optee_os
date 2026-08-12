@@ -6,9 +6,11 @@
 #include <arm.h>
 #include <drivers/qcom/cmd_db/cmd_db.h>
 #include <initcall.h>
+#include <io.h>
 #include <kernel/mutex.h>
 #include <kernel/panic.h>
 #include <mm/core_memprot.h>
+#include <mm/core_mmu.h>
 #include <platform_config.h>
 #include <stdint.h>
 #include <string.h>
@@ -16,7 +18,16 @@
 #include <trace.h>
 #include <util.h>
 
+#ifdef AOP_CMD_DB_PTR_ADDR
+/*
+ * On some targets the cmd_db blob is placed in DDR at boot and its address is
+ * published as a word in AOP message RAM rather than being fixed, so the
+ * pointer word is mapped statically and the blob itself mapped once read.
+ */
+register_phys_mem(MEM_AREA_IO_NSEC, AOP_CMD_DB_PTR_ADDR, sizeof(uint32_t));
+#else
 register_phys_mem(MEM_AREA_RAM_NSEC, AOP_CMD_DB_BASE, AOP_CMD_DB_SIZE);
+#endif
 
 #define CMD_DB_MAGIC_NUM		0x0c0330db
 #define CMD_DB_VER			0x00000001
@@ -147,13 +158,40 @@ static bool is_valid_res_id(const char *res_id)
 		CMD_DB_RES_ID_MAX_CHARS);
 }
 
+static paddr_t cmd_db_base(void)
+{
+#ifdef AOP_CMD_DB_PTR_ADDR
+	uint32_t *ptr = phys_to_virt(AOP_CMD_DB_PTR_ADDR, MEM_AREA_IO_NSEC,
+				     sizeof(uint32_t));
+
+	if (!ptr) {
+		EMSG("CMD_DB: Failed to map pointer at PA 0x%lx",
+		     (unsigned long)AOP_CMD_DB_PTR_ADDR);
+		return 0;
+	}
+
+	return io_read32((vaddr_t)ptr);
+#else
+	return AOP_CMD_DB_BASE;
+#endif
+}
+
 static TEE_Result cmd_db_init(void)
 {
-	query_db.data = phys_to_virt(AOP_CMD_DB_BASE, MEM_AREA_RAM_NSEC,
-				     AOP_CMD_DB_SIZE);
+	paddr_t base = cmd_db_base();
+
+	if (!base)
+		goto err_panic;
+
+#ifdef AOP_CMD_DB_PTR_ADDR
+	/* The blob's address is only known now, so map it on the fly. */
+	query_db.data = core_mmu_add_mapping(MEM_AREA_RAM_NSEC, base,
+					     AOP_CMD_DB_SIZE);
+#else
+	query_db.data = phys_to_virt(base, MEM_AREA_RAM_NSEC, AOP_CMD_DB_SIZE);
+#endif
 	if (!query_db.data) {
-		EMSG("CMD_DB: Failed to map at PA 0x%lx",
-		     (unsigned long)AOP_CMD_DB_BASE);
+		EMSG("CMD_DB: Failed to map at PA 0x%lx", (unsigned long)base);
 		goto err_panic;
 	}
 
@@ -247,12 +285,21 @@ static TEE_Result copy_aux_data(uint16_t slv_idx, struct entry_header *entry,
 				uint8_t *data)
 {
 	struct slv_id_info *slv_info = &query_db.data->slv_id_info[slv_idx];
-	uint32_t len = MIN(result->len, entry->len);
+	uint32_t len = entry->len;
 	size_t offset = 0;
 	size_t bounds = 0;
 
 	if (!data)
 		return TEE_ERROR_BAD_PARAMETERS;
+
+	/*
+	 * Report the size the caller needs rather than copying a partial blob;
+	 * a truncated aux list is indistinguishable from a complete one.
+	 */
+	if (len > result->len) {
+		result->len = len;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
 
 	if (ADD_OVERFLOW(slv_info->data_offset, entry->offset, &offset) ||
 	    ADD_OVERFLOW(sizeof(struct db_header), offset, &bounds) ||
@@ -297,8 +344,10 @@ cmd_db_get_entry_by_res_id(const char *res_id,
 	result->priority[1] = entry.priority[1];
 	result->version = query_db.data->slv_id_info[slv_idx].version;
 
-	if (entry.len == 0)
+	if (entry.len == 0) {
+		result->len = 0;
 		return TEE_SUCCESS;
+	}
 
 	if (result->len == 0) {
 		result->len = entry.len;
@@ -367,6 +416,32 @@ TEE_Result cmd_db_get_addr(const char *res_id, uint32_t *addr)
 	res = cmd_db_get_entry_by_res_id(res_id, &result, NULL);
 	if (res == TEE_SUCCESS)
 		*addr = result.addr;
+
+	mutex_unlock(&query_db.lock);
+	return res;
+}
+
+TEE_Result cmd_db_get_aux(const char *res_id, uint8_t *buf, size_t *len)
+{
+	struct cmd_db_query_result_type result = { };
+	TEE_Result res = TEE_SUCCESS;
+
+	if (!buf || !len || !*len || *len > UINT32_MAX ||
+	    !is_valid_res_id(res_id))
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	result.len = *len;
+
+	mutex_lock(&query_db.lock);
+
+	if (!query_db.data) {
+		mutex_unlock(&query_db.lock);
+		return TEE_ERROR_BAD_STATE;
+	}
+
+	res = cmd_db_get_entry_by_res_id(res_id, &result, buf);
+	if (res == TEE_SUCCESS || res == TEE_ERROR_SHORT_BUFFER)
+		*len = result.len;
 
 	mutex_unlock(&query_db.lock);
 	return res;
