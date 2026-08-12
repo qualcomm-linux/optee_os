@@ -25,6 +25,10 @@ register_phys_mem(MEM_AREA_IO_NSEC, GCC_BASE, GCC_SIZE);
 #define PLL_CONFIG_CTL			0x20
 #define PLL_CONFIG_CTL_U		0x24
 #define PLL_CONFIG_CTL_U1		0x28
+#define PLL_TEST_CTL			0x2c
+#define PLL_TEST_CTL_U			0x30
+#define PLL_TEST_CTL_U1			0x34
+#define PLL_TEST_CTL_U2			0x38
 
 /* PLL_MODE fields */
 #define PLL_MODE_OUTCTRL		BIT(0)
@@ -38,6 +42,17 @@ register_phys_mem(MEM_AREA_IO_NSEC, GCC_BASE, GCC_SIZE);
 #define PLL_L_VAL_L_MASK		0x0000ffff
 #define PLL_L_VAL_CAL_L_SHIFT		16
 #define PLL_L_VAL_CAL_L_MASK		0xffff0000
+
+/*
+ * Lucid-OLE PLL_L_VAL fields, packed differently from Lucid-EVO: an 8-bit
+ * L value (bits 0-7) and an 8-bit process-cal value (bits 16-23), at the
+ * same register offset as EVO's 16-bit L (bits 0-15) + 16-bit cal (bits
+ * 16-31) fields. Bits 24-31 (ring-osc cal) are not written by
+ * HAL_clk_LucidolePLLConfigPLL/SetCalConfig and are left alone here too.
+ */
+#define PLL_OLE_L_VAL_L_MASK		0x000000ff
+#define PLL_OLE_L_VAL_PROCESS_CAL_SHIFT	16
+#define PLL_OLE_L_VAL_PROCESS_CAL_MASK	0x00ff0000
 
 /* PLL_USER_CTL fields */
 #define PLL_USER_CTL_PLLOUT_MAIN_EN	BIT(0)
@@ -139,6 +154,67 @@ TEE_Result qcom_lucidevo_pll_enable(vaddr_t pll_base,
 	return TEE_SUCCESS;
 }
 
+TEE_Result qcom_lucidole_pll_enable(vaddr_t pll_base,
+				    const struct qcom_lucidole_pll_config *cfg)
+{
+	uint32_t user_val = 0;
+	int ret = 0;
+
+	/* Reg settings: program the static PLL trim/config registers. */
+	io_write32(pll_base + PLL_CONFIG_CTL, cfg->config_ctl);
+	io_write32(pll_base + PLL_CONFIG_CTL_U, cfg->config_ctl_u);
+	io_write32(pll_base + PLL_CONFIG_CTL_U1, cfg->config_ctl_u1);
+	io_write32(pll_base + PLL_TEST_CTL, cfg->test_ctl);
+	io_write32(pll_base + PLL_TEST_CTL_U, cfg->test_ctl_u);
+	io_write32(pll_base + PLL_TEST_CTL_U1, cfg->test_ctl_u1);
+	io_write32(pll_base + PLL_TEST_CTL_U2, cfg->test_ctl_u2);
+	io_write32(pll_base + PLL_USER_CTL, cfg->user_ctl);
+	io_write32(pll_base + PLL_USER_CTL_U, cfg->user_ctl_u);
+
+	/* ConfigPLL: program L value and fractional value. */
+	io_mask32(pll_base + PLL_L_VAL, cfg->l_val, PLL_OLE_L_VAL_L_MASK);
+	io_write32(pll_base + PLL_ALPHA_VAL, cfg->alpha_val);
+
+	/* Select fractional format and program the pre-/post-div ratios. */
+	user_val = io_read32(pll_base + PLL_USER_CTL);
+	if (cfg->frac_mode_mn)
+		user_val |= PLL_USER_CTL_FRAC_FORMAT_SEL;
+	else
+		user_val &= ~PLL_USER_CTL_FRAC_FORMAT_SEL;
+
+	user_val &= ~(PLL_USER_CTL_PRE_DIV_MASK |
+		      PLL_USER_CTL_POST_DIV_ODD_MASK |
+		      PLL_USER_CTL_POST_DIV_EVEN_MASK);
+	if (cfg->pre_div >= 1 && cfg->pre_div <= 8)
+		user_val |= SHIFT_U32(cfg->pre_div - 1,
+				      PLL_USER_CTL_PRE_DIV_SHIFT) &
+			    PLL_USER_CTL_PRE_DIV_MASK;
+	io_write32(pll_base + PLL_USER_CTL, user_val);
+
+	/* Always use fine-grained lock detection. */
+	io_setbits32(pll_base + PLL_USER_CTL_U, PLL_USER_CTL_U_FINE_LOCK_DET);
+
+	/* SetCalConfig: program the process-cal L value. */
+	io_mask32(pll_base + PLL_L_VAL,
+		  SHIFT_U32(cfg->cal_l_val, PLL_OLE_L_VAL_PROCESS_CAL_SHIFT),
+		  PLL_OLE_L_VAL_PROCESS_CAL_MASK);
+
+	/* Enable: select RUN opmode and take the PLL out of reset. */
+	io_write32(pll_base + PLL_OPMODE, PLL_OPMODE_RUN);
+	io_setbits32(pll_base + PLL_MODE, PLL_MODE_RESET_N);
+
+	/* Wait for the PLL to lock. */
+	REG_POLL_TIMEOUT(pll_base + PLL_MODE, 10 * 1000, 10, &ret, pll_locked);
+	if (ret < 0)
+		return TEE_ERROR_TIMEOUT;
+
+	/* Enable PLL outputs and the main output. */
+	io_setbits32(pll_base + PLL_MODE, PLL_MODE_OUTCTRL);
+	io_setbits32(pll_base + PLL_USER_CTL, PLL_USER_CTL_PLLOUT_MAIN_EN);
+
+	return TEE_SUCCESS;
+}
+
 TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
 			       uint32_t cfg_value)
 {
@@ -159,10 +235,16 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 	switch (group) {
 	case QCOM_CLKS_TURING:
 	case QCOM_CLKS_TURING1:
+	case QCOM_CLKS_TURING2:
+	case QCOM_CLKS_TURING3:
 	case QCOM_CLKS_LPASS:
 	case QCOM_CLKS_WPSS:
 	case QCOM_CLKS_GPDSP0:
 	case QCOM_CLKS_GPDSP1:
+	case QCOM_CLKS_SOCCP:
+	case QCOM_CLKS_HPASS0:
+	case QCOM_CLKS_HPASS1:
+	case QCOM_CLKS_HPASS2:
 		return qcom_clock_enable_pas(group);
 	default:
 		EMSG("Unsupported clock group %d\n", group);
