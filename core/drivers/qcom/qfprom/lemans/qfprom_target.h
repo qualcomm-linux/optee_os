@@ -17,6 +17,67 @@
 #define QFPROM_CORR_BASE                        0x00784000
 #define QFPROM_SIZE                             0x4000
 
+/*
+ * SECURE_BOOTn secure-control register array holding the per-code-segment
+ * AUTH_EN and USE_SERIAL_NUM bits. Authentication is required when AUTH_EN
+ * is blown; the OEM root-of-trust anchor lives in the PK_HASH_0 fuse. The
+ * APPS code segment is index 1 within the array.
+ */
+#define SECURE_BOOT_APPS_ADDR			(SECURITY_CONTROL_BASE + 0x606c)
+#define SECURE_BOOT_AUTH_EN_BMSK		0x20
+#define SECURE_BOOT_USE_SERIAL_NUM_BMSK		0x40
+
+/*
+ * Size of the OEM root-of-trust digest stored in the PK_HASH_0 fuse region.
+ * SHA-384 (48 bytes) on this platform, matching the secure-boot ROM.
+ */
+#define QFPROM_ROOT_OF_TRUST_BYTE_SIZE		48
+
+/*
+ * Device-identity sense registers in the SECURITY_CONTROL block (hardware
+ * shadow of the underlying OEM_CONFIG / PTE fuse rows). Used to bind signed
+ * image metadata to this device.
+ */
+#define OEM_ID_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6138)
+#define OEM_ID_BMSK				0xffff0000
+#define OEM_ID_SHFT				16
+#define MODEL_ID_BMSK				0x0000ffff
+#define MODEL_ID_SHFT				0
+#define JTAG_ID_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6130)
+#define JTAG_ID_AUTH_BMSK			0x0fffffff
+#define SERIAL_NUM_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x6134)
+
+/*
+ * SOC hardware version lives in a TCSR register (not a fuse). The metadata
+ * soc_vers binding compares against the family|device field (bits 31:16).
+ */
+#define TCSR_SOC_HW_VERSION_ADDR		0x01FC8000
+#define SOC_HW_VERSION_FAM_DEV_BMSK		0xffff0000
+#define SOC_HW_VERSION_FAM_DEV_SHFT		16
+
+/*
+ * OEM_CONFIG2 fuse register (SECURITY_CONTROL block), holding the
+ * EKU_ENFORCEMENT_EN bit and the per-segment hash algorithm select bits
+ * below.
+ */
+#define OEM_CONFIG2_ADDR			(SECURITY_CONTROL_BASE + 0x6054)
+#define EKU_ENFORCEMENT_EN_SHFT			30
+
+/*
+ * Per-segment hash algorithm select: bit SEGMENT_HASH_FUNCTION_SELECT0_SHFT
+ * + root_cert_sel of OEM_CONFIG2 is indexed by the metadata's root_cert_sel
+ * field (0-3): bit set -> SHA-256, else -> SHA-384.
+ */
+#define SEGMENT_HASH_SELECT_SUPPORTED		1
+#define SEGMENT_HASH_FUNCTION_SELECT0_SHFT	16
+
+/*
+ * OEM_CONFIG0 fuse register (SECURITY_CONTROL block). IMAGE_ENCRYPTION_ENABLE
+ * indicates OEM image encryption is provisioned.
+ */
+#define OEM_CONFIG0_ADDR			(SECURITY_CONTROL_BASE + 0x604c)
+#define IMAGE_ENCRYPTION_ENABLE_SHFT		19
+
 #define QFPROM_BLOW_TIMER_OFFSET                0x2030
 #define QFPROM_ACCEL_OFFSET                     0x2038
 
