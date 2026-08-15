@@ -19,6 +19,8 @@ TEE_Result pas_sig_auth_authenticate(const struct pas_mbn *hs,
 				     size_t meta_data_size,
 				     uint32_t pas_id, uint32_t hash_len,
 				     const uint8_t *anchor);
+
+TEE_Result pas_sig_auth_commit_rollback(const struct pas_mbn *hs);
 #else
 static inline TEE_Result
 pas_sig_auth_hash_len(const struct pas_md_slot *slot __unused,
@@ -35,6 +37,12 @@ pas_sig_auth_authenticate(const struct pas_mbn *hs __unused,
 			  uint32_t pas_id __unused,
 			  uint32_t hash_len __unused,
 			  const uint8_t *anchor __unused)
+{
+	return TEE_SUCCESS;
+}
+
+static inline TEE_Result
+pas_sig_auth_commit_rollback(const struct pas_mbn *hs __unused)
 {
 	return TEE_SUCCESS;
 }

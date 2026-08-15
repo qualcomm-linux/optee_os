@@ -184,7 +184,10 @@ TEE_Result pas_auth_verify_reset(struct qcom_pas_session *s,
 				  PTA_QCOM_PAS_VERIFY_IMAGE, pt, vp, NULL);
 
 	TEE_Free(buffer);
-	return res;
+	if (res)
+		return res;
+
+	return pas_sig_auth_commit_rollback(&slot->mbn);
 }
 
 TEE_Result pas_auth_release_metadata(struct qcom_pas_session *s,

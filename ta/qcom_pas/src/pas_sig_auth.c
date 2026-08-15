@@ -303,9 +303,12 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 {
 	uint32_t rot_hash_algo = TEE_ALG_SHA384;
 	TEE_Result res = TEE_ERROR_GENERIC;
+	struct pas_fuse_mrc_info mrc = { };
 	uint8_t *signed_copy = NULL;
 	const uint8_t *roots = NULL;
 	uint32_t sig_hash_algo = 0;
+	uint32_t root_cert_sel = 0;
+	struct pas_meta meta = { };
 	const uint8_t *leaf = NULL;
 	bool eku_enforced = false;
 	uint32_t sig_algo = 0;
@@ -318,6 +321,32 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 		return TEE_ERROR_SECURITY;
 	}
 
+	if (pas_meta_get(hs, &meta) == TEE_SUCCESS)
+		root_cert_sel = meta.root_cert_sel;
+
+	res = pas_fuse_get_mrc_info(&mrc);
+	if (res) {
+		EMSG("PAS auth: cannot read MRC info: %#"PRIx32, res);
+		return res;
+	}
+	if (root_cert_sel >= mrc.num_roots) {
+		EMSG("PAS auth: root_cert_sel %#"PRIx32" >= %#"PRIx32" roots",
+		     root_cert_sel, mrc.num_roots);
+		return TEE_ERROR_SECURITY;
+	}
+
+	if (mrc.num_roots > 1) {
+		res = pas_sig_check_root_cert_index(root_cert_sel,
+						    mrc.num_roots,
+						    mrc.activation_list,
+						    mrc.revocation_list);
+		if (res) {
+			EMSG("PAS auth: root cert %#"PRIx32" not usable",
+			     root_cert_sel);
+			return res;
+		}
+	}
+
 	res = pas_fuse_get_eku_enforcement_en(&eku_enforced);
 	if (res) {
 		EMSG("PAS auth: cannot read EKU enforcement fuse: %#"PRIx32,
@@ -326,7 +355,8 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 	}
 
 	res = pas_sig_verify_cert_chain(hs->oem_certs, hs->oem_certs_size,
-					eku_enforced, 1, 0, &leaf,
+					eku_enforced,
+					mrc.num_roots, root_cert_sel, &leaf,
 					&leaf_len, &roots, &roots_len);
 	if (res) {
 		EMSG("PAS auth: OEM cert chain invalid: %#"PRIx32, res);
@@ -371,6 +401,69 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 	TEE_Free(signed_copy);
 	if (res) {
 		EMSG("PAS auth: OEM signature verify failed: %#"PRIx32, res);
+		return res;
+	}
+
+	return TEE_SUCCESS;
+}
+
+static TEE_Result check_anti_rollback(const struct pas_mbn *hs)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	struct pas_meta meta = { };
+	uint32_t dev_ver = 0;
+
+	res = pas_meta_get(hs, &meta);
+	if (res == TEE_ERROR_NO_DATA)
+		return TEE_SUCCESS;
+	if (res) {
+		EMSG("PAS ARB: bad OEM metadata");
+		return res;
+	}
+
+	res = pas_fuse_get_pil_rollback_version(&dev_ver);
+	if (res)
+		return res;
+
+	if (!dev_ver)
+		return TEE_SUCCESS;
+
+	if (meta.anti_rollback < dev_ver) {
+		EMSG("PAS ARB: image version %#"PRIx32" < device %#"PRIx32,
+		     meta.anti_rollback, dev_ver);
+		return TEE_ERROR_SECURITY;
+	}
+
+	return TEE_SUCCESS;
+}
+
+TEE_Result pas_sig_auth_commit_rollback(const struct pas_mbn *hs)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	struct pas_meta meta = { };
+	uint32_t dev_ver = 0;
+
+	res = pas_meta_get(hs, &meta);
+	if (res == TEE_ERROR_NO_DATA)
+		return TEE_SUCCESS;
+	if (res)
+		return res;
+
+	res = pas_fuse_get_pil_rollback_version(&dev_ver);
+	if (res)
+		return res;
+
+	/*
+	 * A lower version was already rejected in check_anti_rollback();
+	 * an equal version is already the floor, so nothing to advance.
+	 */
+	if (meta.anti_rollback <= dev_ver)
+		return TEE_SUCCESS;
+
+	res = pas_fuse_blow_pil_rollback_version(meta.anti_rollback);
+	if (res) {
+		EMSG("PAS ARB: fuse advance to %#"PRIx32" failed: %#"PRIx32,
+		     meta.anti_rollback, res);
 		return res;
 	}
 
@@ -424,6 +517,10 @@ TEE_Result pas_sig_auth_authenticate(const struct pas_mbn *hs,
 
 	res = pas_meta_verify_preamble(meta_data, meta_data_size,
 				       hs->hash_table, hash_len);
+	if (res)
+		return res;
+
+	res = check_anti_rollback(hs);
 	if (res)
 		return res;
 
