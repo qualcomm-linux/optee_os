@@ -132,6 +132,25 @@ TEE_Result pas_fuse_get_eku_enforcement_en(bool *eku_enforced)
 	return TEE_SUCCESS;
 }
 
+TEE_Result pas_fuse_get_rsa_disable(bool *rsa_disabled)
+{
+	TEE_Param params[TEE_NUM_PARAMS] = { };
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t pt = 0;
+
+	pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_OUTPUT, TEE_PARAM_TYPE_NONE,
+			     TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE);
+	res = fuse_pta_invoke(PTA_QCOM_FUSE_GET_RSA_DISABLE, pt, params);
+	if (res) {
+		EMSG("PAS fuse: cannot read DISABLE_RSA fuse: %#"PRIx32, res);
+		return res;
+	}
+
+	*rsa_disabled = params[0].value.a;
+
+	return TEE_SUCCESS;
+}
+
 bool pas_fuse_get_image_encryption_en(void)
 {
 	TEE_Param params[TEE_NUM_PARAMS] = { };

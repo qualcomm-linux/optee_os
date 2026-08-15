@@ -307,6 +307,23 @@ TEE_Result qcom_secboot_get_eku_enforcement_en(bool *enabled)
 	return TEE_SUCCESS;
 }
 
+TEE_Result qcom_secboot_get_rsa_disable(bool *disabled)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t val = 0;
+
+	if (!disabled)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	res = read_sense_reg(OEM_CONFIG2_ADDR, &val);
+	if (res)
+		return res;
+
+	*disabled = val & BIT32(DISABLE_RSA_SHFT);
+
+	return TEE_SUCCESS;
+}
+
 TEE_Result qcom_secboot_get_image_encryption_en(bool *enabled)
 {
 	TEE_Result res = TEE_ERROR_GENERIC;

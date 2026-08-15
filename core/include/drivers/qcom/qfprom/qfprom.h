@@ -62,6 +62,8 @@ TEE_Result qcom_secboot_get_segment_hash_len(uint32_t root_cert_sel,
 
 TEE_Result qcom_secboot_get_eku_enforcement_en(bool *enabled);
 
+TEE_Result qcom_secboot_get_rsa_disable(bool *disabled);
+
 TEE_Result qcom_secboot_get_image_encryption_en(bool *enabled);
 
 TEE_Result qcom_secboot_get_mrc_info(bool *root_sel_enabled,

@@ -101,4 +101,11 @@
  */
 #define PTA_QCOM_FUSE_GET_MRC_INFO		11
 
+/*
+ * Query the OEM DISABLE_RSA policy fuse.
+ *
+ * [out] params[0].value.a:	1 if RSA-signed images are disabled, 0 otherwise
+ */
+#define PTA_QCOM_FUSE_GET_RSA_DISABLE		12
+
 #endif /* __PTA_QCOM_FUSE_H */

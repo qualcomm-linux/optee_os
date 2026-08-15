@@ -147,6 +147,28 @@ static TEE_Result get_eku_enforcement_en(uint32_t param_types,
 	return TEE_SUCCESS;
 }
 
+static TEE_Result get_rsa_disable(uint32_t param_types,
+				  TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+	TEE_Result res = TEE_ERROR_GENERIC;
+	bool disabled = false;
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	res = qcom_secboot_get_rsa_disable(&disabled);
+	if (res)
+		return res;
+
+	params[0].value.a = disabled;
+
+	return TEE_SUCCESS;
+}
+
 static TEE_Result get_use_serial_num(uint32_t param_types,
 				     TEE_Param params[TEE_NUM_PARAMS])
 {
@@ -283,6 +305,8 @@ static TEE_Result invoke_command(void *sess_ctx __unused,
 		return blow_pil_rollback_version(param_types, params);
 	case PTA_QCOM_FUSE_GET_MRC_INFO:
 		return get_mrc_info(param_types, params);
+	case PTA_QCOM_FUSE_GET_RSA_DISABLE:
+		return get_rsa_disable(param_types, params);
 	default:
 		return TEE_ERROR_NOT_IMPLEMENTED;
 	}

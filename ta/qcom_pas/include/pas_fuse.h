@@ -42,6 +42,8 @@ TEE_Result pas_fuse_get_hw_binding_info(bool need_soc_vers,
 
 TEE_Result pas_fuse_get_eku_enforcement_en(bool *eku_enforced);
 
+TEE_Result pas_fuse_get_rsa_disable(bool *rsa_disabled);
+
 bool pas_fuse_get_image_encryption_en(void);
 
 TEE_Result pas_fuse_get_segment_hash_len(uint32_t root_cert_sel,
