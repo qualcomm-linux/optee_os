@@ -311,7 +311,9 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 	struct pas_meta meta = { };
 	const uint8_t *leaf = NULL;
 	bool eku_enforced = false;
+	bool rsa_disabled = false;
 	uint32_t sig_algo = 0;
+	uint32_t salt_len = 0;
 	size_t signed_len = 0;
 	size_t roots_len = 0;
 	size_t leaf_len = 0;
@@ -384,18 +386,28 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 		return res;
 
 	res = pas_sig_algo_from_leaf(leaf, leaf_len, &sig_algo,
-				     &sig_hash_algo);
+				     &sig_hash_algo, &salt_len);
 	if (res) {
 		EMSG("PAS auth: cannot determine signature algorithm: %#"PRIx32,
 		     res);
 		return res;
 	}
 
+	if (sig_algo == TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256) {
+		res = pas_fuse_get_rsa_disable(&rsa_disabled);
+		if (res)
+			return res;
+		if (rsa_disabled) {
+			EMSG("PAS auth: RSA rejected by DISABLE_RSA fuse");
+			return TEE_ERROR_SECURITY;
+		}
+	}
+
 	res = pas_meta_signed_copy(hs, &signed_copy, &signed_len);
 	if (res)
 		return res;
 
-	res = pas_sig_verify_signature(sig_algo, sig_hash_algo, leaf,
+	res = pas_sig_verify_signature(sig_algo, sig_hash_algo, salt_len, leaf,
 				       leaf_len, signed_copy, signed_len,
 				       hs->oem_sig, hs->oem_sig_size);
 	TEE_Free(signed_copy);

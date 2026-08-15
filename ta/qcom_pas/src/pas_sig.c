@@ -4,9 +4,11 @@
  */
 
 #include <mbedtls/asn1.h>
+#include <mbedtls/bignum.h>
 #include <mbedtls/md.h>
 #include <mbedtls/oid.h>
 #include <mbedtls/pk.h>
+#include <mbedtls/rsa.h>
 #include <mbedtls/x509_crt.h>
 #include <pas_sig.h>
 #include <string.h>
@@ -50,13 +52,79 @@ static TEE_Result digest(uint32_t hash_algo, const uint8_t *msg, size_t msg_len,
 	return res;
 }
 
+#define PAS_RSA_MIN_BITS	2048U
+#define PAS_RSA_MAX_BITS	4096U
+#define PAS_RSA_PUBLIC_EXPONENT	65537
+
 static const mbedtls_x509_crt_profile pas_crt_profile = {
 	.allowed_mds = MBEDTLS_X509_ID_FLAG(MBEDTLS_MD_SHA256) |
 		       MBEDTLS_X509_ID_FLAG(MBEDTLS_MD_SHA384),
-	.allowed_pks = MBEDTLS_X509_ID_FLAG(MBEDTLS_PK_ECDSA) |
+	.allowed_pks = MBEDTLS_X509_ID_FLAG(MBEDTLS_PK_RSA) |
+		       MBEDTLS_X509_ID_FLAG(MBEDTLS_PK_RSASSA_PSS) |
+		       MBEDTLS_X509_ID_FLAG(MBEDTLS_PK_ECDSA) |
 		       MBEDTLS_X509_ID_FLAG(MBEDTLS_PK_ECKEY),
 	.allowed_curves = MBEDTLS_X509_ID_FLAG(MBEDTLS_ECP_DP_SECP384R1),
+	.rsa_min_bitlen = PAS_RSA_MIN_BITS,
 };
+
+static TEE_Result check_rsa_key_constraints(mbedtls_pk_context *pk)
+{
+	mbedtls_rsa_context *rsa = mbedtls_pk_rsa(*pk);
+	mbedtls_mpi e = { };
+	size_t bits = 0;
+	int rc = 0;
+
+	bits = mbedtls_pk_get_bitlen(pk);
+	if (bits < PAS_RSA_MIN_BITS || bits > PAS_RSA_MAX_BITS) {
+		EMSG("PAS auth: RSA modulus %zu bits out of [%u, %u]", bits,
+		     PAS_RSA_MIN_BITS, PAS_RSA_MAX_BITS);
+		return TEE_ERROR_SECURITY;
+	}
+
+	mbedtls_mpi_init(&e);
+	if (mbedtls_rsa_export(rsa, NULL, NULL, NULL, NULL, &e)) {
+		mbedtls_mpi_free(&e);
+		return TEE_ERROR_SECURITY;
+	}
+
+	rc = mbedtls_mpi_cmp_int(&e, PAS_RSA_PUBLIC_EXPONENT);
+	mbedtls_mpi_free(&e);
+	if (rc) {
+		EMSG("PAS auth: RSA public exponent != %d",
+		     PAS_RSA_PUBLIC_EXPONENT);
+		return TEE_ERROR_SECURITY;
+	}
+
+	return TEE_SUCCESS;
+}
+
+static bool is_rsa_type(mbedtls_pk_type_t pk_type)
+{
+	return pk_type == MBEDTLS_PK_RSA || pk_type == MBEDTLS_PK_RSASSA_PSS;
+}
+
+static TEE_Result check_chain_rsa_constraints(const mbedtls_x509_crt *leaf,
+					      size_t num_prefix,
+					      const mbedtls_x509_crt *sel_root)
+{
+	const mbedtls_x509_crt *crt = NULL;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	size_t i = 0;
+
+	for (crt = leaf, i = 0; crt && i < num_prefix; crt = crt->next, i++) {
+		if (!is_rsa_type(mbedtls_pk_get_type(&crt->pk)))
+			continue;
+
+		res = check_rsa_key_constraints((mbedtls_pk_context *)&crt->pk);
+		if (res)
+			return res;
+	}
+
+	if (!is_rsa_type(mbedtls_pk_get_type(&sel_root->pk)))
+		return TEE_SUCCESS;
+
+	return check_rsa_key_constraints((mbedtls_pk_context *)&sel_root->pk);
+}
 
 /* mbedTLS treats an absent EKU extension as unrestricted; require it. */
 static TEE_Result check_eku(const mbedtls_x509_crt *leaf, bool enforced)
@@ -169,7 +237,8 @@ static TEE_Result check_sig_algo(const mbedtls_x509_crt *crt,
 	if (mbedtls_oid_get_sig_alg(&crt->sig_oid, &md, &pk))
 		return TEE_ERROR_SECURITY;
 
-	if (pk != MBEDTLS_PK_ECDSA || md != MBEDTLS_MD_SHA384)
+	if (pk != MBEDTLS_PK_RSASSA_PSS &&
+	    (pk != MBEDTLS_PK_ECDSA || md != MBEDTLS_MD_SHA384))
 		return TEE_ERROR_SECURITY;
 
 	if (pk_out)
@@ -350,6 +419,11 @@ TEE_Result pas_sig_verify_cert_chain(const uint8_t *chain_der,
 	if (res)
 		goto out;
 
+	res = check_chain_rsa_constraints(leaf, num_prefix, sel_root);
+	if (res)
+		goto out;
+
+	/* crt->next may skip the selected root with multiple roots. */
 	crt = leaf;
 	for (i = 0; i + 1 < num_prefix; i++) {
 		res = check_issuer_linkage(crt->next, crt);
@@ -434,14 +508,14 @@ TEE_Result pas_sig_check_root_of_trust(uint32_t hash_algo, size_t hash_len,
 
 TEE_Result pas_sig_algo_from_leaf(const uint8_t *leaf_der,
 				  size_t leaf_der_len, uint32_t *sig_algo,
-				  uint32_t *hash_algo)
+				  uint32_t *hash_algo, uint32_t *salt_len)
 {
 	mbedtls_pk_type_t pk = MBEDTLS_PK_NONE;
 	mbedtls_md_type_t md = MBEDTLS_MD_NONE;
 	TEE_Result res = TEE_ERROR_SECURITY;
 	mbedtls_x509_crt leaf = { };
 
-	if (!leaf_der || !leaf_der_len || !sig_algo || !hash_algo)
+	if (!leaf_der || !leaf_der_len || !sig_algo || !hash_algo || !salt_len)
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	mbedtls_x509_crt_init(&leaf);
@@ -457,9 +531,15 @@ TEE_Result pas_sig_algo_from_leaf(const uint8_t *leaf_der,
 	}
 
 	switch (pk) {
+	case MBEDTLS_PK_RSASSA_PSS:
+		*hash_algo = TEE_ALG_SHA256;
+		*sig_algo = TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256;
+		*salt_len = TEE_SHA256_HASH_SIZE;
+		break;
 	case MBEDTLS_PK_ECDSA:
 		*hash_algo = TEE_ALG_SHA384;
 		*sig_algo = TEE_ALG_ECDSA_SHA384;
+		*salt_len = 0;
 		break;
 	default:
 		res = TEE_ERROR_SECURITY;
@@ -492,6 +572,7 @@ static size_t ecdsa_der_sig_len(const uint8_t *sig, size_t field_len)
 }
 
 TEE_Result pas_sig_verify_signature(uint32_t sig_algo, uint32_t hash_algo,
+				    uint32_t salt_len,
 				    const uint8_t *leaf_der,
 				    size_t leaf_der_len,
 				    const uint8_t *msg, size_t msg_len,
@@ -526,6 +607,23 @@ TEE_Result pas_sig_verify_signature(uint32_t sig_algo, uint32_t hash_algo,
 	}
 
 	switch (sig_algo) {
+	case TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256: {
+		mbedtls_pk_rsassa_pss_options opts = {
+			.mgf1_hash_id = MBEDTLS_MD_SHA256,
+			.expected_salt_len = salt_len,
+		};
+
+		actual_sig_len = mbedtls_pk_get_len(&leaf.pk);
+		if (!actual_sig_len || actual_sig_len > sig_len) {
+			res = TEE_ERROR_SECURITY;
+			goto out;
+		}
+
+		rc = mbedtls_pk_verify_ext(MBEDTLS_PK_RSASSA_PSS, &opts,
+					   &leaf.pk, md, digest_buf,
+					   digest_buf_len, sig, actual_sig_len);
+		break;
+	}
 	case TEE_ALG_ECDSA_SHA384:
 		actual_sig_len = ecdsa_der_sig_len(sig, sig_len);
 		rc = mbedtls_pk_verify(&leaf.pk, md, digest_buf, digest_buf_len,

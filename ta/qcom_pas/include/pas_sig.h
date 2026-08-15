@@ -35,9 +35,10 @@ TEE_Result pas_sig_check_root_of_trust(uint32_t hash_algo, size_t hash_len,
 
 TEE_Result pas_sig_algo_from_leaf(const uint8_t *leaf_der,
 				  size_t leaf_der_len, uint32_t *sig_algo,
-				  uint32_t *hash_algo);
+				  uint32_t *hash_algo, uint32_t *salt_len);
 
 TEE_Result pas_sig_verify_signature(uint32_t sig_algo, uint32_t hash_algo,
+				    uint32_t salt_len,
 				    const uint8_t *leaf_der,
 				    size_t leaf_der_len,
 				    const uint8_t *msg, size_t msg_len,
