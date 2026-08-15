@@ -42,6 +42,10 @@ TEE_Result qcom_secboot_get_use_serial_num(bool *enabled);
 
 TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len);
 
+TEE_Result qcom_secboot_get_pil_rollback_version(uint32_t *version);
+
+TEE_Result qcom_secboot_blow_pil_rollback_version(uint32_t version);
+
 struct qcom_secboot_device_ids {
 	uint32_t oem_id;
 	uint32_t model_id;

@@ -54,6 +54,147 @@ TEE_Result qcom_secboot_get_use_serial_num(bool *enabled)
 	return TEE_SUCCESS;
 }
 
+static TEE_Result read_corr_word(paddr_t pa, uint32_t mask, uint32_t *out)
+{
+	struct qfprom_context *drv = qfprom_get_context();
+	vaddr_t va = 0;
+
+	if (!drv->corr_base_va)
+		return TEE_ERROR_BAD_STATE;
+
+	va = drv->corr_base_va + (pa - QFPROM_CORR_BASE);
+	*out = io_read32(va) & mask;
+	return TEE_SUCCESS;
+}
+
+static uint32_t popcount32(uint32_t v)
+{
+	v = v - ((v >> 1) & 0x55555555u);
+	v = (v & 0x33333333u) + ((v >> 2) & 0x33333333u);
+	return (((v + (v >> 4)) & 0x0f0f0f0fu) * 0x01010101u) >> 24;
+}
+
+TEE_Result qcom_secboot_get_pil_rollback_version(uint32_t *version)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	bool secboot = false;
+	uint32_t lsb = 0;
+	uint32_t msb = 0;
+	uint32_t en = 0;
+
+	if (!version)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	*version = 0;
+
+	res = qcom_secboot_is_enabled(&secboot);
+	if (res)
+		return res;
+	if (!secboot)
+		return TEE_SUCCESS;
+
+	res = read_corr_word(PIL_ARB_EN_CORR_ADDR, PIL_ARB_EN_BMSK, &en);
+	if (res)
+		return res;
+	if (!en)
+		return TEE_SUCCESS;
+
+	res = read_corr_word(PIL_ARB_LSB_CORR_ADDR, PIL_ARB_LSB_BMSK, &lsb);
+	if (res)
+		return res;
+
+	*version = popcount32(lsb);
+
+	if (PIL_ARB_MSB_ENABLED) {
+		res = read_corr_word(PIL_ARB_MSB_CORR_ADDR, PIL_ARB_MSB_BMSK,
+				     &msb);
+		if (res)
+			return res;
+		*version += popcount32(msb);
+	}
+
+	return TEE_SUCCESS;
+}
+
+static uint32_t unary_mask(uint32_t n)
+{
+	if (n >= 32)
+		return 0xffffffffu;
+	if (!n)
+		return 0;
+	return (uint32_t)((UINT64_C(1) << n) - 1);
+}
+
+TEE_Result qcom_secboot_blow_pil_rollback_version(uint32_t version)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t row[2] = { };
+	uint32_t cur_lsb = 0;
+	uint32_t cur_msb = 0;
+	bool secboot = false;
+	uint32_t lsb_n = 0;
+	uint32_t msb_n = 0;
+	uint32_t cur = 0;
+	uint32_t en = 0;
+
+	res = qcom_secboot_is_enabled(&secboot);
+	if (res)
+		return res;
+	if (!secboot)
+		return TEE_SUCCESS;
+
+	res = read_corr_word(PIL_ARB_EN_CORR_ADDR, PIL_ARB_EN_BMSK, &en);
+	if (res)
+		return res;
+	if (!en)
+		return TEE_SUCCESS;
+
+	res = read_corr_word(PIL_ARB_LSB_CORR_ADDR, PIL_ARB_LSB_BMSK, &cur_lsb);
+	if (res)
+		return res;
+	cur = popcount32(cur_lsb);
+	if (PIL_ARB_MSB_ENABLED) {
+		res = read_corr_word(PIL_ARB_MSB_CORR_ADDR, PIL_ARB_MSB_BMSK,
+				     &cur_msb);
+		if (res)
+			return res;
+		cur += popcount32(cur_msb);
+	}
+
+	if (version <= cur)
+		return TEE_SUCCESS;
+
+	if (version > PIL_ARB_LSB_MAX_VERSION + PIL_ARB_MSB_MAX_VERSION) {
+		EMSG("PAS ARB: version %#"PRIx32" exceeds fuse capacity",
+		     version);
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	/* qfprom_write_row() only blows 0->1 bits; OR in current contents. */
+	lsb_n = MIN(version, (uint32_t)PIL_ARB_LSB_MAX_VERSION);
+	if (version > PIL_ARB_LSB_MAX_VERSION)
+		msb_n = version - PIL_ARB_LSB_MAX_VERSION;
+
+	row[0] = cur_lsb | unary_mask(lsb_n);
+	row[1] = cur_msb | unary_mask(msb_n);
+
+	res = qfprom_hw_init();
+	if (res)
+		return res;
+
+	res = qfprom_write_row(PIL_ARB_RAW_ADDR, row);
+	qfprom_hw_deinit();
+	if (res) {
+		EMSG("PAS ARB: fuse write failed: %#"PRIx32, res);
+		return res;
+	}
+
+	DMSG("PAS ARB: advanced device version %#"PRIx32" -> %#"PRIx32, cur,
+	     version);
+
+	return TEE_SUCCESS;
+}
+
 static TEE_Result read_sense_reg(paddr_t pa, uint32_t *out)
 {
 	struct qfprom_context *drv = qfprom_get_context();
