@@ -47,4 +47,16 @@ bool pas_fuse_get_image_encryption_en(void);
 TEE_Result pas_fuse_get_segment_hash_len(uint32_t root_cert_sel,
 					 uint32_t *hash_len);
 
+struct pas_fuse_mrc_info {
+	uint32_t num_roots;
+	uint32_t activation_list;
+	uint32_t revocation_list;
+};
+
+TEE_Result pas_fuse_get_mrc_info(struct pas_fuse_mrc_info *info);
+
+TEE_Result pas_fuse_get_pil_rollback_version(uint32_t *dev_ver);
+
+TEE_Result pas_fuse_blow_pil_rollback_version(uint32_t version);
+
 #endif /* __PAS_FUSE_H */
