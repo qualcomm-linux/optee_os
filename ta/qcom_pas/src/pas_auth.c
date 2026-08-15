@@ -4,11 +4,15 @@
  */
 
 #include <pas_auth.h>
+#include <pas_fuse.h>
 #include <pas_mbn_parser.h>
 #include <pas_meta.h>
+#include <pas_sig_auth.h>
+#include <pta_qcom_fuse.h>
 #include <pta_qcom_pas.h>
 #include <qcom_pas_priv.h>
 #include <string.h>
+#include <string_ext.h>
 #include <tee_internal_api.h>
 #include <utee_defines.h>
 
@@ -81,7 +85,9 @@ found:
 TEE_Result pas_auth_authenticate(struct qcom_pas_session *s, uint32_t pas_id)
 {
 	struct pas_md_slot *slot = get_meta_data_slot(s, pas_id);
+	uint8_t anchor[PTA_QCOM_FUSE_ROOT_OF_TRUST_SIZE] = { };
 	TEE_Result res = TEE_ERROR_GENERIC;
+	bool secboot_on = false;
 	uint32_t hash_len = 0;
 
 	if (!slot) {
@@ -97,16 +103,37 @@ TEE_Result pas_auth_authenticate(struct qcom_pas_session *s, uint32_t pas_id)
 		return res;
 	}
 
+	res = pas_fuse_get_secboot_and_root_anchor(anchor, &secboot_on);
+	if (res)
+		secboot_on = true;
+
+	res = pas_sig_auth_hash_len(slot, &hash_len);
+	if (res) {
+		EMSG("PAS auth: cannot pick hash size: %#"PRIx32, res);
+		goto out;
+	}
+
 	res = pas_mbn_parse(slot->meta_data, slot->meta_data_size, hash_len,
 			    &slot->mbn);
 	if (res) {
 		EMSG("PAS auth: MBN parse failed: %#"PRIx32, res);
-		return res;
+		goto out;
+	}
+
+	if (secboot_on) {
+		res = pas_sig_auth_authenticate(&slot->mbn, slot->meta_data,
+						slot->meta_data_size, pas_id,
+						hash_len, anchor);
+		if (res)
+			goto out;
 	}
 
 	slot->ready = true;
+	res = TEE_SUCCESS;
+out:
+	memzero_explicit(anchor, sizeof(anchor));
 
-	return TEE_SUCCESS;
+	return res;
 }
 
 TEE_Result pas_auth_verify_reset(struct qcom_pas_session *s,
