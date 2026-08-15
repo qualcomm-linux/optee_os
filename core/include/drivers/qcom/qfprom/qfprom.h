@@ -36,6 +36,30 @@ TEE_Result qfprom_read_row(uint32_t addr,
 			   enum qfprom_addr_space type,
 			   uint32_t *data);
 
+TEE_Result qcom_secboot_is_enabled(bool *enabled);
+
+TEE_Result qcom_secboot_get_use_serial_num(bool *enabled);
+
+TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len);
+
+struct qcom_secboot_device_ids {
+	uint32_t oem_id;
+	uint32_t model_id;
+	uint32_t jtag_id;
+	uint32_t serial_num;
+};
+
+TEE_Result qcom_secboot_get_device_ids(struct qcom_secboot_device_ids *ids);
+
+TEE_Result qcom_secboot_get_soc_hw_version(uint32_t *fam_dev);
+
+TEE_Result qcom_secboot_get_segment_hash_len(uint32_t root_cert_sel,
+					     uint32_t *hash_len);
+
+TEE_Result qcom_secboot_get_eku_enforcement_en(bool *enabled);
+
+TEE_Result qcom_secboot_get_image_encryption_en(bool *enabled);
+
 /* Write QFPROM row data */
 TEE_Result qfprom_write_row(uint32_t addr, uint32_t *data);
 
