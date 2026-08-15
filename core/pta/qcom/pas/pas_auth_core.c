@@ -6,6 +6,7 @@
 #include <elf32.h>
 #include <elf64.h>
 #include <kernel/cache_helpers.h>
+#include <mm/core_memprot.h>
 #include <mm/core_mmu.h>
 #include <pas_auth_core.h>
 #include <platform_pas.h>
@@ -112,8 +113,9 @@ static TEE_Result parse_elf(const uint8_t *fw, size_t fw_size,
 			return TEE_ERROR_BAD_FORMAT;
 
 		PARSE_EHDR(e_info, ehdr, true);
-		if (e_info->elf_hdr_len < sizeof(*ehdr) ||
-		    e_info->phdr_entry_len < sizeof(Elf64_Phdr))
+		if (e_info->elf_hdr_len != sizeof(*ehdr) ||
+		    e_info->phdr_offset != e_info->elf_hdr_len ||
+		    e_info->phdr_entry_len != sizeof(Elf64_Phdr))
 			return TEE_ERROR_BAD_FORMAT;
 		break;
 	}
@@ -124,8 +126,9 @@ static TEE_Result parse_elf(const uint8_t *fw, size_t fw_size,
 			return TEE_ERROR_BAD_FORMAT;
 
 		PARSE_EHDR(e_info, ehdr, false);
-		if (e_info->elf_hdr_len < sizeof(*ehdr) ||
-		    e_info->phdr_entry_len < sizeof(Elf32_Phdr))
+		if (e_info->elf_hdr_len != sizeof(*ehdr) ||
+		    e_info->phdr_offset != e_info->elf_hdr_len ||
+		    e_info->phdr_entry_len != sizeof(Elf32_Phdr))
 			return TEE_ERROR_BAD_FORMAT;
 		break;
 	}
@@ -313,6 +316,8 @@ TEE_Result pas_auth_core_verify_segments(const struct pas_auth_core_ctx *ctx)
 
 		expected = ctx->hash_table + i * ctx->hash_len;
 
+		dcache_inv_range(ctx->fw + offset, p_info.file_len);
+
 		res = hash_verify(ctx->hash_algo, ctx->fw + offset,
 				  p_info.file_len, expected, ctx->hash_len);
 		if (res) {
@@ -366,6 +371,12 @@ TEE_Result pas_platform_verify_image(uint32_t pas_id,
 		return TEE_ERROR_SECURITY;
 	}
 	fw_size = data->fw_size;
+
+	if (!core_pbuf_is(CORE_MEM_NON_SEC, fw->base, fw_size)) {
+		EMSG("PAS auth: carveout %#"PRIxPA"/%#"PRIx32" not non-secure",
+		     fw->base, fw_size);
+		return TEE_ERROR_SECURITY;
+	}
 
 	fw_va = core_mmu_add_mapping(MEM_AREA_RAM_NSEC, fw->base, fw_size);
 	if (!fw_va) {
