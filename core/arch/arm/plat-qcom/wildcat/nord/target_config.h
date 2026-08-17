@@ -93,4 +93,10 @@
 #define TCSR_MUTEX_BASE			UL(0x01f40000)
 #define TCSR_MUTEX_SIZE			UL(0xc0000)
 
+/*
+ * IRIS video-codec subsystem.
+ */
+#define IRIS_BASE			UL(0x0aa00000)
+#define IRIS_SIZE			ULL(0x00200000)
+
 #endif /* TARGET_CONFIG_H */
