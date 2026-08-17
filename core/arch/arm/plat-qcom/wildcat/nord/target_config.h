@@ -73,4 +73,10 @@
 #define FUSE_CONTROLLER_SW_RANGE4_BASE	UL(0x360d4000)
 #define FUSE_CONTROLLER_SW_RANGE4_SIZE	UL(0x00001000)
 
+/*
+ * IRIS video-codec subsystem.
+ */
+#define IRIS_BASE			UL(0x0aa00000)
+#define IRIS_SIZE			ULL(0x00200000)
+
 #endif /* TARGET_CONFIG_H */
