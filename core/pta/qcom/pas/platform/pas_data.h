@@ -25,6 +25,7 @@
 #define PAS_ID_HPASS1		53
 #define PAS_ID_HPASS2		54
 #define PAS_ID_SOCCP		51
+#define PAS_ID_CAMERA1		50
 
 struct qcom_pas_data {
 	uint32_t pas_id;
