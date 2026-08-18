@@ -19,6 +19,12 @@
 #define PAS_ID_CAMERA		33
 #define PAS_ID_GPDSP0		39
 #define PAS_ID_GPDSP1		40
+#define PAS_ID_TURING2		57
+#define PAS_ID_TURING3		58
+#define PAS_ID_HPASS0		PAS_ID_QDSP6
+#define PAS_ID_HPASS1		53
+#define PAS_ID_HPASS2		54
+#define PAS_ID_SOCCP		51
 
 struct qcom_pas_data {
 	uint32_t pas_id;
