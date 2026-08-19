@@ -8,6 +8,8 @@
 
 #include <tee_api_types.h>
 
+#define ICE_RAW_SECRET_SIZE_BYTES       32U
+
 TEE_Result clear_ice_slave_slot_hwkm(uint32_t slot);
 
 TEE_Result set_config_ice_key_using_hwkm(uint32_t slot,
@@ -21,5 +23,10 @@ TEE_Result import_and_wrap_with_hw_key(const uint8_t *in_key, size_t in_key_len,
 				       uint8_t *out_blob, size_t *out_blob_len);
 
 TEE_Result generate_hw_wrapped_key(uint8_t *out_blob, size_t *out_blob_len);
+
+TEE_Result get_raw_secret_from_wrapped_key(const uint8_t *wrapped_blob,
+					   size_t wrapped_blob_len,
+					   uint8_t *raw_secret,
+					   size_t *raw_secret_len);
 
 #endif /* __ICE_HWKM_H */
