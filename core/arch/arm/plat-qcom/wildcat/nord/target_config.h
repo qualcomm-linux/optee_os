@@ -16,4 +16,8 @@
 #define DRAM1_BASE			ULL(0x800000000)
 #define DRAM1_SIZE			ULL(0x800000000)
 
+/* IMEM and Diagnostic buffer */
+#define IMEM_BASE			UL(0x14680000)
+#define IMEM_SIZE			UL(0x19000)
+
 #endif /* TARGET_CONFIG_H */
