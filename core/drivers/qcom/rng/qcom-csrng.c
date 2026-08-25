@@ -9,11 +9,8 @@
 #include <mm/core_memprot.h>
 #include <platform_config.h>
 #include <rng_support.h>
+#include <trace.h>
 
-#define QCOM_RNG_REG_SIZE			0x1000
-
-#define QCOM_RNG_DATA_OUT			0x0
-#define QCOM_RNG_STATUS				0x4
 #define QCOM_RNG_STATUS_DATA_AVAIL_BMSK	0x1
 
 #define QCOM_RNG_TIMEOUT_US			1000000
@@ -31,24 +28,32 @@ TEE_Result hw_get_random_bytes(void *buf, size_t len)
 	uint32_t val = 0;
 	uint64_t to = 0;
 
-	if (!rng.va)
+	if (!rng.va) {
+		EMSG("QCOM RNG: not initialized");
 		return TEE_ERROR_NOT_SUPPORTED;
+	}
 
-	if (!out || !len)
+	if (!out || !len) {
+		EMSG("QCOM RNG: invalid parameters");
 		return TEE_ERROR_BAD_PARAMETERS;
+	}
 
 	to = timeout_init_us(QCOM_RNG_TIMEOUT_US);
 	while (len) {
 		if (!(io_read32(rng.va + QCOM_RNG_STATUS) &
 		      QCOM_RNG_STATUS_DATA_AVAIL_BMSK)) {
-			if (timeout_elapsed(to))
+			if (timeout_elapsed(to)) {
+				EMSG("QCOM RNG: timeout waiting for data");
 				return TEE_ERROR_BUSY;
+			}
 			continue;
 		}
 
 		while ((val = io_read32(rng.va + QCOM_RNG_DATA_OUT)) == 0) {
-			if (timeout_elapsed(to))
+			if (timeout_elapsed(to)) {
+				EMSG("QCOM RNG: timeout reading data");
 				return TEE_ERROR_BUSY;
+			}
 		}
 
 		for (size_t i = 0; i < sizeof(val) && len; i++) {
@@ -64,8 +69,13 @@ static TEE_Result qcom_csrng_init(void)
 {
 	rng.va = (vaddr_t)core_mmu_add_mapping(MEM_AREA_IO_SEC, rng.pa,
 					       QCOM_RNG_REG_SIZE);
-	if (!rng.va)
+	if (!rng.va) {
+		EMSG("QCOM RNG: failed to map PA=0x%08"PRIxPA, rng.pa);
 		return TEE_ERROR_GENERIC;
+	}
+
+	IMSG("QCOM RNG: mapped PA=0x%08"PRIxPA" VA=0x%08"PRIxVA,
+	     rng.pa, rng.va);
 
 	return TEE_SUCCESS;
 }
