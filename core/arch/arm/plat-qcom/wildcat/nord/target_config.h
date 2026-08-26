@@ -18,4 +18,8 @@
 #define DRAM2_BASE			ULL(0x8800000000)
 #define DRAM2_SIZE			ULL(0x3800000000)
 
+/* SMEM base address */
+#define SMEM_BASE				0x89B00000
+#define SMEM_SIZE				0x00400000
+
 #endif /* TARGET_CONFIG_H */
