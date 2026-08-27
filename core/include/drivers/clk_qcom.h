@@ -7,6 +7,7 @@
 #ifndef _CLK_QCOM_H_
 #define _CLK_QCOM_H_
 
+#include <drivers/clk.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <tee_api_types.h>
@@ -30,6 +31,12 @@ enum qcom_clk_group {
 	QCOM_CLKS_LPASS,
 	QCOM_CLKS_GPDSP0,
 	QCOM_CLKS_GPDSP1,
+	QCOM_CLKS_SOCCP,
+	QCOM_CLKS_HPASS0,
+	QCOM_CLKS_HPASS1,
+	QCOM_CLKS_HPASS2,
+	QCOM_CLKS_TURING2,
+	QCOM_CLKS_TURING3,
 	QCOM_CLKS_MAX,
 };
 
@@ -52,6 +59,23 @@ struct qcom_lucidevo_pll_config {
 	bool frac_mode_mn;		/* false = alpha (default for Q6) */
 };
 
+struct qcom_lucidole_pll_config {
+	uint32_t l_val;
+	uint32_t cal_l_val;
+	uint32_t alpha_val;
+	uint32_t pre_div;		/* div-1..div-8; 0 = div-1 */
+	uint32_t config_ctl;
+	uint32_t config_ctl_u;
+	uint32_t config_ctl_u1;
+	uint32_t test_ctl;
+	uint32_t test_ctl_u;
+	uint32_t test_ctl_u1;
+	uint32_t test_ctl_u2;
+	uint32_t user_ctl;
+	uint32_t user_ctl_u;
+	bool frac_mode_mn;		/* false = alpha (default for Q6) */
+};
+
 TEE_Result qcom_clock_enable(enum qcom_clk_group group);
 TEE_Result qcom_clock_enable_cbc(vaddr_t cbcr);
 TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
@@ -62,6 +86,36 @@ TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
  */
 TEE_Result qcom_lucidevo_pll_enable(vaddr_t pll_base,
 				    const struct qcom_lucidevo_pll_config *cfg);
+
+/* Configure, lock and enable a Lucid-OLE PLL at @pll_base; returns
+ * TEE_ERROR_TIMEOUT if it fails to lock.
+ */
+TEE_Result qcom_lucidole_pll_enable(vaddr_t pll_base,
+				    const struct qcom_lucidole_pll_config *cfg);
+
+#ifdef CFG_QCOM_CLK_BSP
+#include <drivers/clk_qcom_bsp.h>
+
+/*
+ * Look up a QUP SE clk this driver registered, by name. qcom has no secure
+ * DT, so a bus consumer acquires the clk this way instead of
+ * clk_dt_get_by_name(), then drives it via the common clk API.
+ */
+TEE_Result qcom_clk_get_by_name(const char *name, struct clk **out);
+
+/* Enable hardware DFS on a registered QUP SE clk (no clk_ops equivalent). */
+TEE_Result qcom_clk_enable_dfs(struct clk *clk);
+
+/*
+ * Return the frequency plan (domain) backing @clk, or NULL if @clk is not a
+ * QUP SE clk this driver registered. A GENI bus consumer walks
+ * domain->configs[] to run its own serial-engine divider search, then drives
+ * the clk via clk_set_rate()/qcom_clk_enable_dfs() and takes the chosen row's
+ * DFS index straight from its dfs_idx field.
+ */
+const struct qcom_clk_domain *qcom_clk_get_domain(struct clk *clk);
+#endif /* CFG_QCOM_CLK_BSP */
+
 #ifdef CFG_QCOM_PAS_PTA
 TEE_Result qcom_clock_enable_pas(enum qcom_clk_group group);
 TEE_Result qcom_clock_enable_pas_processor(enum qcom_clk_group group);
