@@ -147,7 +147,6 @@ static TEE_Result rpmh_hlvl_apply(struct rpmh_client *rpmh,
 				new_hlvl, &req_id);
 	if (res)
 		return res;
-	rpmh_barrier_single(rpmh, req_id);
 
 	hlvl->voted_hlvl = new_hlvl;
 
