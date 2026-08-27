@@ -15,10 +15,6 @@
 /* Get resource address by resource ID */
 TEE_Result cmd_db_get_addr(const char *res_id, uint32_t *addr);
 
-/* Get resource priority for driver ID */
-TEE_Result cmd_db_get_priority(uint32_t addr, uint8_t drv_id,
-			       uint32_t *priority);
-
 /*
  * Copy a resource's auxiliary data blob by resource ID. For ARC resources
  * (e.g. "cx.lvl") this is the little-endian uint16 list of vlvls the rail
