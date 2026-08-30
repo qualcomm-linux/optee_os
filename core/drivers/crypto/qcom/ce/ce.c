@@ -7,7 +7,7 @@
 
 #include <arm.h>
 #include <ce.h>
-#include <hwkm.h>
+#include <drivers/hwkm.h>
 #include <io.h>
 #include <kernel/delay.h>
 #include <kernel/mutex.h>
