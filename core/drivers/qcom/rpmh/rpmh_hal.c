@@ -8,6 +8,7 @@
 #include <util.h>
 
 #include "rpmh_hal.h"
+#include "rpmh_hwio.h"
 
 static struct {
 	vaddr_t rsc_base;

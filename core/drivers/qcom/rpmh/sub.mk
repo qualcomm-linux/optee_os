@@ -17,5 +17,8 @@ srcs-y += rpmh_tcs.c
 # Resource command tracking and management
 srcs-y += rpmh_resource_commands.c
 
-# DRV configuration
-srcs-y += rpmh_drv_config.c
+# Per-target DRV configuration and register layout
+srcs-y += $(PLATFORM_FLAVOR)/rpmh_drv_config.c
+
+global-incdirs-y += .
+global-incdirs-y += $(PLATFORM_FLAVOR)
