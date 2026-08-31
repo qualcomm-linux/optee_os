@@ -19,3 +19,6 @@ srcs-y += rpmh_resource_commands.c
 
 # DRV configuration
 srcs-y += rpmh_drv_config.c
+
+# Per-target rpmh_msgram_config.h (MSG_RAM_SECTION_SIZE)
+global-incdirs-y += $(PLATFORM_FLAVOR)
