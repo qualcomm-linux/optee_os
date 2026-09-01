@@ -14,4 +14,6 @@
 #define IMEM_BASE			UL(0x0c100000)
 #define IMEM_SIZE			UL(0x00020000)
 
+#define TCSR_BOOT_MISC_DETECT		UL(0x3D3000)
+
 #endif /* TARGET_CONFIG_H */
