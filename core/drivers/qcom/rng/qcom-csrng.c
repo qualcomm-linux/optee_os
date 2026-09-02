@@ -49,12 +49,7 @@ TEE_Result hw_get_random_bytes(void *buf, size_t len)
 			continue;
 		}
 
-		while ((val = io_read32(rng.va + QCOM_RNG_DATA_OUT)) == 0) {
-			if (timeout_elapsed(to)) {
-				EMSG("QCOM RNG: timeout reading data");
-				return TEE_ERROR_BUSY;
-			}
-		}
+		val = io_read32(rng.va + QCOM_RNG_DATA_OUT);
 
 		for (size_t i = 0; i < sizeof(val) && len; i++) {
 			*out++ = (uint8_t)(val >> (i * 8));
