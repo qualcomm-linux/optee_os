@@ -39,4 +39,10 @@
 #define IRIS_BASE			UL(0x0aa00000)
 #define IRIS_SIZE			ULL(0x00200000)
 
+/* Configuration Registers for RNG */
+#define QCOM_RNG_REG_BASE      UL(0x010D0000)
+#define QCOM_RNG_REG_SIZE      UL(0x00020000)
+#define QCOM_RNG_DATA_OUT      0x1000
+#define QCOM_RNG_STATUS        0x1004
+
 #endif /* TARGET_CONFIG_H */
