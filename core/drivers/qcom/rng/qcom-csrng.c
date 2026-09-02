@@ -69,9 +69,6 @@ static TEE_Result qcom_csrng_init(void)
 		return TEE_ERROR_GENERIC;
 	}
 
-	IMSG("QCOM RNG: mapped PA=0x%08"PRIxPA" VA=0x%08"PRIxVA,
-	     rng.pa, rng.va);
-
 	return TEE_SUCCESS;
 }
 
