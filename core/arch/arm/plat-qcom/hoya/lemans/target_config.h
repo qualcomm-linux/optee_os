@@ -93,9 +93,10 @@
 #define RPMH_PDC_GPDSP1_SIZE		UL(0x00002000)
 
 /* Configuration Registers for RNG */
-#define QCOM_RNG_REG_SIZE	UL(0x00020000)
-#define QCOM_RNG_DATA_OUT    0x0
-#define QCOM_RNG_STATUS      0x4
+#define QCOM_RNG_REG_BASE      UL(0x010C0000)
+#define QCOM_RNG_REG_SIZE      UL(0x00020000)
+#define QCOM_RNG_DATA_OUT      0x11000
+#define QCOM_RNG_STATUS        0x11004
 
 #define TITAN_SS_BASE			UL(0x0ac00000)
 #define TITAN_SS_SIZE			UL(0x00200000)
