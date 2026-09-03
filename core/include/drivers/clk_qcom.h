@@ -32,6 +32,7 @@ enum qcom_clk_group {
 	QCOM_CLKS_LPASS,
 	QCOM_CLKS_GPDSP0,
 	QCOM_CLKS_GPDSP1,
++	QCOM_CLKS_LMCU,
 	QCOM_CLKS_MAX,
 };
 
@@ -59,6 +60,20 @@ struct qcom_lucidevo_pll_config {
 	bool frac_mode_mn;		/* false = alpha (default for Q6) */
 };
 
+/* Register configuration for a Spark PLL. */
+struct qcom_spark_pll_config {
+	uint32_t l_val;
+	uint32_t cal_l_val;
+	uint32_t alpha_val;
+	uint32_t pre_div;		/* div-1..div-8; 0 = div-1 */
+	uint32_t vco_sel;
+	uint32_t config_ctl;
+	uint32_t test_ctl;
+	uint32_t test_ctl_u;
+	uint32_t user_ctl;
+	uint32_t user_ctl_u;
+};
+
 TEE_Result qcom_clock_enable(enum qcom_clk_group group);
 TEE_Result qcom_clock_enable_cbc(vaddr_t cbcr);
 TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
@@ -69,6 +84,12 @@ TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
  */
 TEE_Result qcom_lucidevo_pll_enable(vaddr_t pll_base,
 				    const struct qcom_lucidevo_pll_config *cfg);
+
+/* Configure, lock and enable a Spark PLL at @pll_base; returns
+ * TEE_ERROR_TIMEOUT if it fails to lock.
+ */
+TEE_Result qcom_spark_pll_enable(vaddr_t pll_base,
+				 const struct qcom_spark_pll_config *cfg);
 
 #if defined(CFG_QCOM_CLK_CFG)
 /*
