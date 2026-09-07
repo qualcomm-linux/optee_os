@@ -14,34 +14,19 @@
 #include <util.h>
 
 /*
- * Nord's fuse controller is a TME (Trust Management Engine) sub-block
- * rather than a standalone always-on QFPROM macro (confirmed via IPCatalog:
- * both QFPROM_RAW and QFPROM_CORR are owned by the tme_fusecontroller
- * component). The register blocks are still directly memory-mapped and
- * readable via ordinary MMIO from the AP, matching how qfprom_read_row()
- * already accesses QFPROM_RAW_BASE/QFPROM_CORR_BASE on hoya - no TME
- * firmware call (TMECOMM) is required for these reads.
- *
- * QFPROM_RAW_BASE/QFPROM_CORR_BASE below are TME_FUSECONTROLLER_BASE-relative
- * (0x360c0000 + 0x0/+0x8000), not the 0x0078xxxx range hoya uses; the two
- * platforms' fuse controllers sit at different physical addresses.
+ * Nord's fuse controller is a TME sub-block (not standalone QFPROM macro).
+ * Directly memory-mapped MMIO, no TME firmware call needed.
+ * QFPROM_RAW_BASE/QFPROM_CORR_BASE are TME_FUSECONTROLLER_BASE-relative
+ * (0x360c0000 + 0x0/+0x8000), not hoya's 0x0078xxxx range.
  */
 #define QFPROM_RAW_BASE                          0x360c0000
 #define QFPROM_CORR_BASE                         0x360c8000
 #define QFPROM_SIZE                              0x8000
 
 /*
- * SECURE_BOOT secure-control register holding the AUTH_EN, PK_HASH_IN_FUSE
- * and USE_SERIAL_NUM bits, plus ROM_PK_HASH_INDEX (which root-of-trust table
- * entry the ROM selects when PK_HASH_IN_FUSE is not blown). Authentication
- * is required when AUTH_EN is blown; the root-of-trust anchor lives in the
- * PK_HASH fuse rows below rather than the ROM table when PK_HASH_IN_FUSE is
- * blown.
- *
- * Unlike hoya's per-code-segment SECURE_BOOTn array, nord has a single
- * SECURE_BOOT register (no code-segment index) - confirmed by
- * secfuses/inc/nord/SecHWIO.h, whose secboot_read_secure_bootn_*() helpers
- * all read this one address regardless of the code segment argument.
+ * SECURE_BOOT register: AUTH_EN, PK_HASH_IN_FUSE, USE_SERIAL_NUM bits.
+ * Nord has single register (not per-segment like hoya).
+ * Root-of-trust anchor in PK_HASH fuse rows when PK_HASH_IN_FUSE is blown.
  */
 #define SECURE_BOOT_APPS_ADDR			(SECURITY_CONTROL_BASE + 0x0704)
 #define SECURE_BOOT_AUTH_EN_BMSK		0x20
@@ -49,13 +34,8 @@
 #define SECURE_BOOT_PK_HASH_IN_FUSE_BMSK	0x10
 
 /*
- * Size of the OEM root-of-trust digest compared during authentication.
- * SHA-384 (48 bytes), matching secboot_chipset.h's
- * SECBOOT_OTP_ROOT_OF_TRUST_BYTE_SIZE definition for this platform and
- * secboot_hw_sha3rot.c's SECBOOT_HASH_DIGEST_SIZE_SHA384 comparison length -
- * both confirmed against the reference root-of-trust read/compare call
- * despite the underlying PK_HASH fuse rows (below) spanning more bits than
- * this.
+ * OEM root-of-trust digest size: SHA-384 (48 bytes).
+ * Matches secboot_chipset.h and secboot_hw_sha3rot.c definitions.
  */
 #define QFPROM_ROOT_OF_TRUST_BYTE_SIZE		48
 
@@ -67,16 +47,9 @@
  */
 
 /*
- * Device-identity sense registers (hardware shadow of the underlying
- * fuse rows), read via tzbsp_fusecontroller_hwio.h/SecHWIO.h in the
- * reference. Used to bind signed image metadata to this device.
- *
- * Unlike hoya's single OEM_ID_SENSE_ADDR word packing both OEM_ID (bits
- * 31:16) and MODEL_ID (bits 15:0), nord exposes OEM_ID and MODEL_ID
- * (named OEM_HW_ID/OEM_PRODUCT_ID in the reference) as two separate
- * 16-bit registers - each BMSK/SHFT pair below is kept for source
- * compatibility with hoya's accessor shape even though nord's fields do
- * not need a shift.
+ * Device-identity sense registers (hardware shadow of fuse rows).
+ * Nord: separate OEM_ID and MODEL_ID registers (vs hoya's packed word).
+ * BMSK/SHFT pairs kept for source compatibility with hoya accessors.
  */
 #define OEM_ID_SENSE_ADDR			(SECURITY_CONTROL_BASE + 0x0800)
 #define OEM_ID_BMSK				0x0000ffff
@@ -114,13 +87,8 @@
 #define SOC_HW_VERSION_FAM_DEV_SHFT		16
 
 /*
- * OEM_CONFIG2 fuse register, holding the EKU_ENFORCEMENT_EN bit at the same
- * bit position as hoya. Nord's OEM_CONFIG2 does not carry a per-segment
- * hash-algorithm-select field the way lemans's does; MBN v6 segment hashing
- * on this platform always uses SHA-384, matching kodiak's
- * SEGMENT_HASH_SELECT_SUPPORTED=0 behavior (confirmed absent: no
- * SEGMENT_HASH_FUNCTION_SELECT field exists in nord's OEM_CONFIG2 register
- * definition).
+ * OEM_CONFIG2: EKU_ENFORCEMENT_EN bit (same position as hoya).
+ * No per-segment hash-algorithm-select field; always SHA-384.
  */
 #define OEM_CONFIG2_ADDR			(SECURITY_CONTROL_BASE + 0x0308)
 #define EKU_ENFORCEMENT_EN_SHFT			30

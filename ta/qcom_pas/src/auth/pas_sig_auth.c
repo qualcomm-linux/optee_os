@@ -215,16 +215,9 @@ static TEE_Result check_jtag_binding(const struct pas_meta *meta,
 }
 
 /*
- * Bind the device serial number against the metadata allow-list. Checked when
- * the metadata's USE_SERIAL_NUMBER flag is set, the APPS SECURE_BOOTn
- * USE_SERIAL_NUM fuse override forces it, or the DEBUG/root-revoke-activate/
- * UIE-key-switch option requests its SN-gated enable value (the reference
- * gates each of those three on a serial match, independently of whether this
- * TA acts on the requested permission). When none of those triggers apply,
- * the check is skipped entirely, matching the reference. When a trigger does
- * apply, the reference treats a device with no fused serial as unbindable
- * and fails the check rather than skipping it - a zero fused serial is not a
- * no-op here either.
+ * Bind device serial number against metadata allow-list when triggered by
+ * USE_SERIAL_NUMBER flag, SECURE_BOOTn override, or DEBUG/revoke/UIE option.
+ * Skipped if no trigger; fails (not skipped) if device has no fused serial.
  */
 static TEE_Result check_serial_binding(const struct pas_meta *meta,
 				       const struct pas_device_ids *ids,
@@ -502,11 +495,8 @@ static TEE_Result verify_authenticity(const struct pas_mbn *hs,
 }
 
 /*
- * Determine the per-segment hash digest size for @slot's metadata, mirroring
- * the reference segment-hash-algorithm selection: the OEM metadata's
- * root_cert_sel (word 28) selects the fuse-configured algorithm via the fuse
- * PTA on platforms that implement the field; images without the fuse field
- * use the reference default root_cert_sel of 0.
+ * Per-segment hash digest size: OEM metadata's root_cert_sel (word 28)
+ * selects fuse-configured algorithm; default root_cert_sel = 0.
  */
 #define SECBOOT_DEFAULT_ROOT_CERT_SEL	0U
 
