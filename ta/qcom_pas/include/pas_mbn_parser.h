@@ -16,8 +16,6 @@
  *   [ phdrs[0].p_filesz bytes ]  ELF header + program-header table
  *   [ hash-segment bytes      ]  verbatim MBN hash-segment phdr content
  *
- *   v5 (40-byte header):
- *     [header][hash table][qti sig][qti certs][oem sig][oem certs]
  *   v6 (48-byte header):
  *     [header][qti meta][oem meta][hash table]
  *     [qti sig][qti certs][oem sig][oem certs]
@@ -27,7 +25,7 @@
  *
  * v7 adds a common-metadata block shared by both signers (holding the hash
  * table's digest algorithm, among other fields) ahead of the per-signer
- * metadata; its header uses a different field layout and offsets from v5/v6
+ * metadata; its header uses a different field layout and offsets from v6
  * (see pas_mbn_parser_priv.h) but the same "fixed header, then concatenated
  * variable-length regions" shape.
  *
@@ -43,7 +41,7 @@
  *
  * All pointers reference the caller-owned metadata buffer.
  *
- * @version:		MBN header version (PAS_MBN_VERSION_5 / _6 / _7)
+ * @version:		MBN header version (PAS_MBN_VERSION_6 / _7)
  * @hash_table:		per-program-header digest table
  * @hash_table_size:	size of the hash table in bytes
  * @num_entries:	number of digests in the table

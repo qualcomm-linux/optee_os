@@ -199,9 +199,6 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 
 	version = pas_mbn_read_u32(seg + MBN_OFF_VERSION);
 	switch (version) {
-	case PAS_MBN_VERSION_5:
-		hdr_size = MBN_HDR_SIZE_V5;
-		break;
 	case PAS_MBN_VERSION_6:
 		hdr_size = MBN_HDR_SIZE_V6;
 		break;
@@ -209,10 +206,9 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 		hdr_size = MBN_HDR_SIZE_V7;
 		break;
 	default:
-		EMSG("PAS auth: unsupported MBN version %#"PRIu32, version);
+		EMSG("PAS auth: unsupported MBN version %"PRIu32, version);
 		return TEE_ERROR_BAD_FORMAT;
 	}
-	hdr_size = MBN_HDR_SIZE_V6;
 
 	if (seg_size < hdr_size)
 		return TEE_ERROR_BAD_FORMAT;
