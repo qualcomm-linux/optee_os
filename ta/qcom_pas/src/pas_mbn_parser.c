@@ -27,6 +27,15 @@ uint32_t pas_mbn_read_u32(const uint8_t *p)
 	return v;
 }
 
+uint64_t pas_mbn_read_u64(const uint8_t *p)
+{
+	uint64_t v = 0;
+
+	memcpy(&v, p, sizeof(v));
+
+	return v;
+}
+
 TEE_Result pas_mbn_locate(const uint8_t *md, size_t md_size,
 			  const uint8_t **seg, size_t *seg_size)
 {
@@ -161,6 +170,7 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 			 uint32_t hash_len, struct pas_mbn *out)
 {
 	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t common_meta_size = 0;
 	uint32_t oem_cert_size = 0;
 	uint32_t oem_meta_size = 0;
 	const uint8_t *seg = NULL;
@@ -188,20 +198,55 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 		return TEE_ERROR_BAD_FORMAT;
 
 	version = pas_mbn_read_u32(seg + MBN_OFF_VERSION);
-	if (version != PAS_MBN_VERSION_6) {
-		EMSG("PAS auth: unsupported MBN version %#"PRIx32, version);
+	switch (version) {
+	case PAS_MBN_VERSION_5:
+		hdr_size = MBN_HDR_SIZE_V5;
+		break;
+	case PAS_MBN_VERSION_6:
+		hdr_size = MBN_HDR_SIZE_V6;
+		break;
+	case PAS_MBN_VERSION_7:
+		hdr_size = MBN_HDR_SIZE_V7;
+		break;
+	default:
+		EMSG("PAS auth: unsupported MBN version %#"PRIu32, version);
 		return TEE_ERROR_BAD_FORMAT;
 	}
 	hdr_size = MBN_HDR_SIZE_V6;
 
-	/* "code_size" is the hash-table length in bytes, not a code length. */
-	code_size = pas_mbn_read_u32(seg + MBN_OFF_CODE_SIZE);
-	qc_sig_size = pas_mbn_read_u32(seg + MBN_OFF_QC_SIG_SIZE);
-	qc_cert_size = pas_mbn_read_u32(seg + MBN_OFF_QC_CERT_SIZE);
-	oem_sig_size = pas_mbn_read_u32(seg + MBN_OFF_OEM_SIG_SIZE);
-	oem_cert_size = pas_mbn_read_u32(seg + MBN_OFF_OEM_CERT_SIZE);
-	qc_meta_size = pas_mbn_read_u32(seg + MBN_OFF_QC_META_SIZE);
-	oem_meta_size = pas_mbn_read_u32(seg + MBN_OFF_OEM_META_SIZE);
+	if (seg_size < hdr_size)
+		return TEE_ERROR_BAD_FORMAT;
+
+	/*
+	 * The MBN header "code_size" field is the hash-table length in bytes,
+	 * i.e. num_entries * hash_size (one digest per program header).
+	 */
+	if (version == PAS_MBN_VERSION_7) {
+		code_size = pas_mbn_read_u32(seg + MBN_OFF_V7_CODE_SIZE);
+		qc_sig_size = pas_mbn_read_u32(seg + MBN_OFF_V7_QC_SIG_SIZE);
+		qc_cert_size = pas_mbn_read_u32(seg + MBN_OFF_V7_QC_CERT_SIZE);
+		oem_sig_size = pas_mbn_read_u32(seg + MBN_OFF_V7_OEM_SIG_SIZE);
+		oem_cert_size = pas_mbn_read_u32(seg +
+						 MBN_OFF_V7_OEM_CERT_SIZE);
+		common_meta_size = pas_mbn_read_u32(seg +
+						MBN_OFF_V7_COMMON_META_SIZE);
+		qc_meta_size = pas_mbn_read_u32(seg + MBN_OFF_V7_QC_META_SIZE);
+		oem_meta_size = pas_mbn_read_u32(seg +
+						 MBN_OFF_V7_OEM_META_SIZE);
+	} else {
+		/* "code_size" is the hash-table length in bytes, not a code length. */
+		code_size = pas_mbn_read_u32(seg + MBN_OFF_CODE_SIZE);
+		qc_sig_size = pas_mbn_read_u32(seg + MBN_OFF_QC_SIG_SIZE);
+		qc_cert_size = pas_mbn_read_u32(seg + MBN_OFF_QC_CERT_SIZE);
+		oem_sig_size = pas_mbn_read_u32(seg + MBN_OFF_OEM_SIG_SIZE);
+		oem_cert_size = pas_mbn_read_u32(seg + MBN_OFF_OEM_CERT_SIZE);
+		if (version == PAS_MBN_VERSION_6) {
+			qc_meta_size = pas_mbn_read_u32(seg +
+							MBN_OFF_QC_META_SIZE);
+			oem_meta_size = pas_mbn_read_u32(seg +
+							 MBN_OFF_OEM_META_SIZE);
+		}
+	}
 
 	if (!code_size || code_size % hash_len)
 		return TEE_ERROR_BAD_FORMAT;
@@ -215,7 +260,8 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 	cursor = hdr_size;
 	out->signed_region = seg;
 
-	if (ADD_OVERFLOW(qc_meta_size, oem_meta_size, &signed_size) ||
+	if (ADD_OVERFLOW(common_meta_size, qc_meta_size, &signed_size) ||
+	    ADD_OVERFLOW(signed_size, oem_meta_size, &signed_size) ||
 	    ADD_OVERFLOW(signed_size, code_size, &signed_size) ||
 	    ADD_OVERFLOW(signed_size, hdr_size, &signed_size))
 		return TEE_ERROR_BAD_FORMAT;
@@ -224,6 +270,10 @@ TEE_Result pas_mbn_parse(const uint8_t *md, size_t md_size,
 		return TEE_ERROR_BAD_FORMAT;
 	out->signed_region_size = signed_size;
 
+	res = pas_mbn_reserve_region(seg, seg_size, &cursor, common_meta_size,
+				     &out->common_meta, &out->common_meta_size);
+	if (res)
+		return res;
 	res = pas_mbn_reserve_region(seg, seg_size, &cursor, qc_meta_size,
 				     &out->qti_meta, &out->qti_meta_size);
 	if (res)
