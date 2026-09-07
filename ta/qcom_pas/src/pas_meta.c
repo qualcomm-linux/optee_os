@@ -15,7 +15,7 @@
 
 /*
  * OEM metadata field word offsets within the metadata block
- * (little-endian 32-bit words).
+ * (little-endian 32-bit words), MBN v6 layout.
  */
 #define META_OFF_MAJOR		0
 #define META_OFF_MINOR		1
@@ -32,6 +32,59 @@
 #define META_OFF_ANTI_ROLLBACK	29
 #define META_OFF_ROOT_CERT_SEL	28
 #define META_MIN_WORDS		(META_OFF_ANTI_ROLLBACK + 1)
+
+/*
+ * MBN v7 per-signing metadata (secboot_metadata_mbnv7_type) field byte
+ * offsets - a different, packed layout from the v6 word-array above, with
+ * wider serial-number entries and fields (SOC feature/segment id, lifecycle
+ * state, OEM root-cert-hash) this port does not yet decode.
+ */
+#define META7_OFF_MAJOR			0x00
+#define META7_OFF_MINOR			0x04
+#define META7_OFF_ANTI_ROLLBACK		0x08
+#define META7_OFF_ROOT_CERT_SEL		0x0c
+#define META7_OFF_SOC_VERS		0x10
+#define META7_NUM_SOC_VERS		12
+#define META7_OFF_HW_ID			0x44
+#define META7_OFF_SERIAL_NUM		0x48
+#define META7_NUM_SERIAL_NUM		8
+#define META7_OFF_OEM_ID		0x88
+#define META7_OFF_MODEL_ID		0x8c
+#define META7_OFF_FLAGS			0xdc
+#define META7_SIZE			0xe0
+
+/*
+ * MBN v7 common metadata (secboot_common_metadata_mbnv7_type) field byte
+ * offsets, shared by both signers.
+ */
+#define COMMON_META7_OFF_MAJOR		0x00
+#define COMMON_META7_OFF_MINOR		0x04
+#define COMMON_META7_OFF_SW_ID		0x08
+#define COMMON_META7_OFF_SECONDARY_SW_ID 0x0c
+#define COMMON_META7_OFF_HASH_TABLE_ALGO 0x10
+#define COMMON_META7_SIZE		0x18
+
+/*
+ * Accepted common-metadata versions: major must be 0; minor 1 additionally
+ * accepts the _ZI hash-table-algo variants over minor 0's set (both accept
+ * SHA-256/384 - the algorithms this port supports - so the two minors are
+ * otherwise equivalent here).
+ */
+#define COMMON_META7_MAJOR		0U
+#define COMMON_META7_MINOR_0		0U
+#define COMMON_META7_MINOR_1		1U
+
+/*
+ * Hash-table digest algorithm identifiers carried in the v7 common
+ * metadata's hash_table_algo field. Only SHA-256/384 are accepted; SHA-512
+ * and every _ZI (zero-initialized-segment hashing, bit 31 set) variant fall
+ * through pas_meta_peek_hash_table_algo()'s default case and are rejected -
+ * the PTA-side segment re-verification only handles SHA-256/384 digests
+ * (PAS_AUTH_CORE_MAX_HASH_SIZE = 48), and no ZI-aware consumer exists in
+ * this port.
+ */
+#define CRYPTO_HASH_ALGO_SHA256		0x2U
+#define CRYPTO_HASH_ALGO_SHA384		0x3U
 
 TEE_Result pas_meta_get_version(const uint8_t *meta_data,
 				size_t meta_data_size, uint32_t *version)
@@ -83,16 +136,19 @@ TEE_Result pas_meta_peek_root_cert_sel(const uint8_t *meta_data,
 				       uint32_t *root_cert_sel)
 {
 	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t common_meta_size = 0;
+	uint32_t oem_meta_size = 0;
+	uint32_t qc_meta_size = 0;
 	const uint8_t *oem_meta = NULL;
 	const uint8_t *qc_meta = NULL;
 	const uint8_t *segment = NULL;
-	uint32_t oem_meta_size = 0;
-	uint32_t qc_meta_size = 0;
-	size_t segment_size = 0;
+	const uint8_t *skip = NULL;
 	size_t oem_meta_len = 0;
 	size_t qc_meta_len = 0;
+	size_t skip_len = 0;
 	uint32_t version = 0;
 	size_t hdr_size = 0;
+	size_t segment_size = 0;
 	size_t offset = 0;
 
 	if (!meta_data || !meta_data_size || !root_cert_sel)
@@ -107,9 +163,50 @@ TEE_Result pas_meta_peek_root_cert_sel(const uint8_t *meta_data,
 		return TEE_ERROR_BAD_FORMAT;
 
 	version = pas_mbn_read_u32(segment + MBN_OFF_VERSION);
-	if (version != PAS_MBN_VERSION_6) {
-		EMSG("PAS auth: unsupported MBN version %#"PRIx32, version);
+	if (version != PAS_MBN_VERSION_6 && version != PAS_MBN_VERSION_7) {
+		EMSG("PAS auth: unsupported MBN version %"PRIu32, version);
 		return TEE_ERROR_BAD_FORMAT;
+	}
+
+	if (version == PAS_MBN_VERSION_7) {
+		hdr_size = MBN_HDR_SIZE_V7;
+		if (segment_size < hdr_size)
+			return TEE_ERROR_BAD_FORMAT;
+
+		common_meta_size = pas_mbn_read_u32(segment +
+						MBN_OFF_V7_COMMON_META_SIZE);
+		qc_meta_size = pas_mbn_read_u32(segment +
+						MBN_OFF_V7_QC_META_SIZE);
+		oem_meta_size = pas_mbn_read_u32(segment +
+						 MBN_OFF_V7_OEM_META_SIZE);
+
+		offset = hdr_size;
+		/* Skip the common and QC metadata blocks. */
+		res = pas_mbn_reserve_region(segment, segment_size, &offset,
+					     common_meta_size, &skip,
+					     &skip_len);
+		if (res)
+			return res;
+		res = pas_mbn_reserve_region(segment, segment_size, &offset,
+					     qc_meta_size, &skip, &skip_len);
+		if (res)
+			return res;
+		res = pas_mbn_reserve_region(segment, segment_size, &offset,
+					     oem_meta_size, &oem_meta,
+					     &oem_meta_len);
+		if (res)
+			return res;
+
+		if (!oem_meta)
+			return TEE_ERROR_NO_DATA;
+
+		if (oem_meta_len < META7_SIZE)
+			return TEE_ERROR_BAD_FORMAT;
+
+		*root_cert_sel = pas_mbn_read_u32(oem_meta +
+						  META7_OFF_ROOT_CERT_SEL);
+
+		return TEE_SUCCESS;
 	}
 
 	hdr_size = MBN_HDR_SIZE_V6;
@@ -234,6 +331,42 @@ TEE_Result pas_meta_get(const struct pas_mbn *hs, struct pas_meta *meta)
 	if (!hs->oem_meta || !hs->oem_meta_size)
 		return TEE_ERROR_NO_DATA;
 
+	if (hs->version == PAS_MBN_VERSION_7) {
+		if (hs->oem_meta_size < META7_SIZE)
+			return TEE_ERROR_BAD_FORMAT;
+		if (!hs->common_meta ||
+		    hs->common_meta_size < COMMON_META7_SIZE)
+			return TEE_ERROR_BAD_FORMAT;
+
+		m = hs->oem_meta;
+		meta->is_v7 = true;
+		meta->major = pas_mbn_read_u32(m + META7_OFF_MAJOR);
+		meta->minor = pas_mbn_read_u32(m + META7_OFF_MINOR);
+		meta->sw_id = pas_mbn_read_u32(hs->common_meta +
+					       COMMON_META7_OFF_SW_ID);
+		meta->secondary_sw_id =
+			pas_mbn_read_u32(hs->common_meta +
+					 COMMON_META7_OFF_SECONDARY_SW_ID);
+		meta->hw_id = pas_mbn_read_u32(m + META7_OFF_HW_ID);
+		meta->oem_id = pas_mbn_read_u32(m + META7_OFF_OEM_ID);
+		meta->model_id = pas_mbn_read_u32(m + META7_OFF_MODEL_ID);
+		meta->flags = pas_mbn_read_u32(m + META7_OFF_FLAGS);
+		for (i = 0; i < META7_NUM_SOC_VERS; i++)
+			meta->soc_vers[i] =
+				pas_mbn_read_u32(m + META7_OFF_SOC_VERS +
+						 i * sizeof(uint32_t));
+		for (i = 0; i < META7_NUM_SERIAL_NUM; i++)
+			meta->serial_num[i] =
+				pas_mbn_read_u64(m + META7_OFF_SERIAL_NUM +
+						 i * sizeof(uint64_t));
+		meta->root_cert_sel = pas_mbn_read_u32(m +
+						       META7_OFF_ROOT_CERT_SEL);
+		meta->anti_rollback = pas_mbn_read_u32(m +
+						       META7_OFF_ANTI_ROLLBACK);
+
+		return TEE_SUCCESS;
+	}
+
 	if (hs->oem_meta_size < META_MIN_WORDS * sizeof(uint32_t))
 		return TEE_ERROR_BAD_FORMAT;
 
@@ -271,6 +404,84 @@ TEE_Result pas_meta_get(const struct pas_mbn *hs, struct pas_meta *meta)
 	return TEE_SUCCESS;
 }
 
+bool pas_meta7_flags_valid(uint32_t flags)
+{
+	uint32_t shift = 0;
+
+	for (shift = 0; shift <= PAS_META7_FLAG_MAX_SHIFT; shift += 2) {
+		if (pas_meta7_flag_bit(flags, shift, true) ==
+		    pas_meta7_flag_bit(flags, shift, false))
+			return false;
+	}
+
+	return true;
+}
+
+TEE_Result pas_meta_peek_hash_table_algo(const uint8_t *meta_data,
+					 size_t meta_data_size,
+					 uint32_t *hash_size)
+{
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t common_meta_size = 0;
+	const uint8_t *common_meta = NULL;
+	const uint8_t *segment = NULL;
+	size_t common_meta_len = 0;
+	uint32_t minor = 0;
+	uint32_t algo = 0;
+	size_t segment_size = 0;
+	size_t offset = 0;
+
+	if (!meta_data || !meta_data_size || !hash_size)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	res = pas_mbn_locate(meta_data, meta_data_size, &segment,
+			     &segment_size);
+	if (res)
+		return res;
+
+	if (segment_size < MBN_HDR_SIZE_V7)
+		return TEE_ERROR_BAD_FORMAT;
+
+	common_meta_size = pas_mbn_read_u32(segment +
+					    MBN_OFF_V7_COMMON_META_SIZE);
+	offset = MBN_HDR_SIZE_V7;
+	res = pas_mbn_reserve_region(segment, segment_size, &offset,
+				     common_meta_size, &common_meta,
+				     &common_meta_len);
+	if (res)
+		return res;
+
+	if (!common_meta || common_meta_len < COMMON_META7_SIZE)
+		return TEE_ERROR_BAD_FORMAT;
+
+	if (pas_mbn_read_u32(common_meta + COMMON_META7_OFF_MAJOR) !=
+	    COMMON_META7_MAJOR) {
+		EMSG("PAS auth: unsupported v7 common-metadata version");
+		return TEE_ERROR_BAD_FORMAT;
+	}
+	minor = pas_mbn_read_u32(common_meta + COMMON_META7_OFF_MINOR);
+	if (minor != COMMON_META7_MINOR_0 && minor != COMMON_META7_MINOR_1) {
+		EMSG("PAS auth: unsupported v7 common-metadata minor %"PRIu32,
+		     minor);
+		return TEE_ERROR_BAD_FORMAT;
+	}
+
+	algo = pas_mbn_read_u32(common_meta + COMMON_META7_OFF_HASH_TABLE_ALGO);
+	switch (algo) {
+	case CRYPTO_HASH_ALGO_SHA256:
+		*hash_size = TEE_SHA256_HASH_SIZE;
+		return TEE_SUCCESS;
+	case CRYPTO_HASH_ALGO_SHA384:
+		*hash_size = TEE_SHA384_HASH_SIZE;
+		return TEE_SUCCESS;
+	default:
+		EMSG("PAS auth: unsupported v7 hash_table_algo %#"PRIx32,
+		     algo);
+		return TEE_ERROR_NOT_SUPPORTED;
+	}
+}
+
+/* Zero a metadata sub-block within the signed-region copy, if present. */
 static void mask_meta_block(uint8_t *copy, size_t copy_len,
 			    const uint8_t *block, size_t block_len,
 			    const uint8_t *base)
@@ -291,8 +502,8 @@ static void zero_field(uint8_t *copy, size_t copy_len, size_t off)
 		memset(copy + off, 0, sizeof(uint32_t));
 }
 
-TEE_Result pas_meta_signed_copy(const struct pas_mbn *hs,
-				uint8_t **out, size_t *out_len)
+TEE_Result pas_meta_oem_signed_copy(const struct pas_mbn *hs,
+				    uint8_t **out, size_t *out_len)
 {
 	uint8_t *copy = NULL;
 
@@ -306,8 +517,23 @@ TEE_Result pas_meta_signed_copy(const struct pas_mbn *hs,
 
 	memcpy(copy, hs->signed_region, hs->signed_region_size);
 
-	zero_field(copy, hs->signed_region_size, MBN_OFF_QC_SIG_SIZE);
-	zero_field(copy, hs->signed_region_size, MBN_OFF_QC_CERT_SIZE);
+	/*
+	 * The OEM signature is computed over the signed region with the QTI
+	 * header size fields and QTI metadata block zeroed. For an OEM-only
+	 * image these are already zero and hs->qti_meta is NULL, so the
+	 * masking is a no-op. v7's header has a different field layout than
+	 * v6 (see pas_mbn_parser_priv.h), so the size-field offsets to
+	 * zero differ by version; the metadata-block masking is
+	 * version-agnostic since it operates on the already-located
+	 * hs->qti_meta pointer.
+	 */
+	if (hs->version == PAS_MBN_VERSION_7) {
+		zero_field(copy, hs->signed_region_size, MBN_OFF_V7_QC_SIG_SIZE);
+		zero_field(copy, hs->signed_region_size, MBN_OFF_V7_QC_CERT_SIZE);
+	} else {
+		zero_field(copy, hs->signed_region_size, MBN_OFF_QC_SIG_SIZE);
+		zero_field(copy, hs->signed_region_size, MBN_OFF_QC_CERT_SIZE);
+	}
 	mask_meta_block(copy, hs->signed_region_size, hs->qti_meta,
 			hs->qti_meta_size, hs->signed_region);
 

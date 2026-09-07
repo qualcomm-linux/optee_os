@@ -24,10 +24,10 @@
 
 /*
  * MBN v7 header field offsets (bytes from hash-segment start). v7 has a
- * different field order than v5/v6 and adds a common-metadata size field
+ * different field order than v6 and adds a common-metadata size field
  * shared by both signers; there is no v7 equivalent of MBN_OFF_VERSION at
- * the same offset as v5/v6 header word 1, so v7 is decoded through its own
- * offsets rather than reusing the MBN_OFF_* v5/v6 constants above.
+ * the same offset as v6 header word 1, so v7 is decoded through its own
+ * offsets rather than reusing the MBN_OFF_* v6 constants above.
  */
 #define MBN_OFF_V7_VERSION		0x04
 #define MBN_OFF_V7_COMMON_META_SIZE	0x08
@@ -43,9 +43,6 @@
 
 /* Read a little-endian uint32_t from @p. */
 uint32_t pas_mbn_read_u32(const uint8_t *p);
-
-/* Read a little-endian uint64_t from @p. */
-uint64_t pas_mbn_read_u64(const uint8_t *p);
 
 /* Read a little-endian uint64_t from @p. */
 uint64_t pas_mbn_read_u64(const uint8_t *p);
