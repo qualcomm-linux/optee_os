@@ -22,13 +22,7 @@
 
 #define MBN_HDR_SIZE_V6		0x30
 
-/*
- * MBN v7 header field offsets (bytes from hash-segment start). v7 has a
- * different field order than v6 and adds a common-metadata size field
- * shared by both signers; there is no v7 equivalent of MBN_OFF_VERSION at
- * the same offset as v6 header word 1, so v7 is decoded through its own
- * offsets rather than reusing the MBN_OFF_* v6 constants above.
- */
+/* MBN v7 header field offsets (v6 layout incompatible; see pas_mbn.h) */
 #define MBN_OFF_V7_VERSION		0x04
 #define MBN_OFF_V7_COMMON_META_SIZE	0x08
 #define MBN_OFF_V7_QC_META_SIZE		0x0c
