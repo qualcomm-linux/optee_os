@@ -41,10 +41,8 @@
 
 #define MBN_HDR_SIZE_V7			0x28
 
-/* Read a little-endian uint32_t from @p. */
 uint32_t pas_mbn_read_u32(const uint8_t *p);
 
-/* Read a little-endian uint64_t from @p. */
 uint64_t pas_mbn_read_u64(const uint8_t *p);
 
 TEE_Result pas_mbn_locate(const uint8_t *md, size_t md_size,
