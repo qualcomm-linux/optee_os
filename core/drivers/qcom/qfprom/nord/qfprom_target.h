@@ -61,18 +61,9 @@
 
 /*
  * PIL subsystem anti-rollback fuse layout: NOT YET AVAILABLE for nord.
- *
- * Unlike hoya's single shared PIL_SUBSYSTEM0/1 counter, nord's reference
- * anti-rollback implementation (tzbsp_arb_config.c) uses a separate
- * QFPROM_CORR/RAW_ANTIROLLBACK_ROWn_LSB/MSB fuse-row pair per subsystem
- * type (ADSP, ADSP1, ADSP2, CDSP, GVM, HCONFIG, camera, IPA, GPU microcode,
- * OEM VM, ...), each gated by a common PIL_ANTI_ROLL_EN bit in OEM_CONFIG5.
- * This has no single PIL_ARB_LSB/MSB pair to port faithfully, and the
- * existing fuse-PTA/pas_fuse.c API (one PTA_QCOM_FUSE_GET/BLOW_PIL_ROLLBACK_
- * VERSION call, no per-subsystem selector) would need to change shape to
- * support it. Left undefined rather than defining a scope-narrowed
- * approximation; CFG_QCOM_PAS_AUTH stays off for this platform until this
- * is resolved (see core/arch/arm/plat-qcom/wildcat/nord/target.mk).
+ * Nord's per-subsystem layout differs from hoya's shared counter model;
+ * the existing fuse-PTA API cannot support it without redesign.
+ * CFG_QCOM_PAS_AUTH must stay off until this is resolved.
  */
 
 /*
@@ -137,26 +128,13 @@
 #define SEGMENT_HASH_SELECT_SUPPORTED		0
 
 /*
- * Multiple-root-certificate (MRC) fuse fields. Nord's MRC_0/MRC_1 register
- * pair (SW_RANGE4 offsets 0x730/0x734) has a materially richer layout than
- * hoya's single-word 4-bit activation/4-bit revocation model: MRC_0 packs
- * QC_ROOT_CERT_ACTIVATION_LIST (bits 5:0), QC_ROOT_CERT_REVOCATION_LIST
- * (bits 11:6), a 5-bit MRC_16_12 field, OEM_ROOT_CERT_ACTIVATION_LIST (bits
- * 22:17), OEM_ROOT_CERT_REVOCATION_LIST (bits 28:23) and a 3-bit MRC_31_29
- * field, with MRC_1 holding MRC_63_32. There is no single field matching
- * hoya's ROOT_CERT_TOTAL_NUM/MRC_ACTIVATION_LIST/MRC_REVOCATION_LIST shape
- * with 4-bit lists, and no evidence was found resolving what MRC_16_12/
- * MRC_31_29/MRC_63_32 represent. Left undefined rather than mapping onto
- * hoya's narrower model; MRC/root-selection support for this platform needs
- * its own accessor design once these fields are understood, not a
- * find-and-replace of hoya's macros.
+ * Multiple-root-certificate (MRC) fuse fields: NOT YET AVAILABLE for nord.
+ * Nord's MRC_0/MRC_1 layout differs materially from hoya's model and includes
+ * undefined fields (MRC_16_12, MRC_31_29, MRC_63_32). MRC/root-selection
+ * support needs its own accessor design once these fields are understood.
  *
- * ROOT_CERT_TOTAL_NUM (number of provisioned roots - 1) is present at the
- * same bit position hoya's kodiak/lemans use, but in the newer OEM_CONFIG5
- * sense register rather than OEM_CONFIG0 - both an OEM_CONFIG5 location and
- * a legacy QFPROM_RAW/CORR_OEM_CONFIG_ROW2_MSB location exist in the
- * reference register header with identical bit position; OEM_CONFIG5 is
- * used here for consistency with every other sense-register field above.
+ * ROOT_CERT_TOTAL_NUM is at the same bit position as hoya/kodiak/lemans,
+ * but in OEM_CONFIG5 (not OEM_CONFIG0) for consistency with other sense regs.
  */
 #define OEM_CONFIG5_ADDR			(SECURITY_CONTROL_BASE + 0x0314)
 #define ROOT_CERT_TOTAL_NUM_BMSK		0x00000700
