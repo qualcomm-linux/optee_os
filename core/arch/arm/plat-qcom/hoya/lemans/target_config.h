@@ -94,4 +94,7 @@
 
 #define TITAN_SS_BASE			UL(0x0ac00000)
 #define TITAN_SS_SIZE			UL(0x00200000)
+
+#define QCOM_RNG_REG_BASE       UL(0x010D0000)
+
 #endif /* TARGET_CONFIG_H */

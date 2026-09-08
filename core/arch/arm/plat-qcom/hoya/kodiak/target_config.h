@@ -39,4 +39,6 @@
 #define IRIS_BASE			UL(0x0aa00000)
 #define IRIS_SIZE			ULL(0x00200000)
 
+#define QCOM_RNG_REG_BASE   UL(0x010D0000)
+
 #endif /* TARGET_CONFIG_H */
