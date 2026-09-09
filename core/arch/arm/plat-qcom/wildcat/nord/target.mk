@@ -11,3 +11,16 @@ $(call force,CFG_TEE_CORE_NB_CORE,18)
 CFG_TZDRAM_START ?= 0xBC280000
 CFG_TEE_RAM_VA_SIZE ?= 0x00200000
 CFG_TA_RAM_VA_SIZE ?= 0x07B80000
+
+ifneq ($(CFG_INSECURE),y)
+CFG_QCOM_QFPROM_FUSEPROV ?= y
+endif
+
+ifeq ($(CFG_QCOM_QFPROM_FUSEPROV),y)
+$(call force,CFG_QCOM_CMD_DB,y)
+$(call force,CFG_QCOM_RPMH_CLIENT,y)
+endif
+
+ifneq ($(filter y,$(CFG_QCOM_QFPROM_FUSEPROV) $(CFG_QCOM_FUSE_PTA)),)
+$(call force,CFG_QCOM_QFPROM,y)
+endif
