@@ -12,3 +12,4 @@ srcs-y += rpmh_client.c
 srcs-y += rpmh_hal.c
 
 global-incdirs-y += $(QCOM_ARCH_FAMILY)
+global-incdirs-y += common
