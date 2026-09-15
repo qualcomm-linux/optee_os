@@ -11,3 +11,12 @@ $(call force,CFG_TEE_CORE_NB_CORE,18)
 CFG_TZDRAM_START ?= 0xBC280000
 CFG_TEE_RAM_VA_SIZE ?= 0x00200000
 CFG_TA_RAM_VA_SIZE ?= 0x07B80000
+
+$(call force,CFG_QCOM_GPCE,y)
+$(call force,CFG_CRYPTO_DRIVER,y)
+$(call force,CFG_CRYPTO_DRV_HASH,y)
+$(call force,CFG_CRYPTO_DRV_CIPHER,y)
+$(call force,CFG_CRYPTO_DRV_MAC,y)
+$(call force,CFG_QCOM_GPCE_HASH_TEST,y)
+$(call force,CFG_QCOM_GPCE_CIPHER_TEST,y)
+$(call force,CFG_QCOM_GPCE_MAC_TEST,y)
