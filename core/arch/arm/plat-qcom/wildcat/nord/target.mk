@@ -11,3 +11,7 @@ $(call force,CFG_TEE_CORE_NB_CORE,18)
 CFG_TZDRAM_START ?= 0xBC280000
 CFG_TEE_RAM_VA_SIZE ?= 0x00200000
 CFG_TA_RAM_VA_SIZE ?= 0x07B80000
+
+# Enable the Qualcomm CSRNG hardware RNG driver.
+# Register offsets and base address are defined in target_config.h.
+$(call force,CFG_QCOM_CSRNG,y)
