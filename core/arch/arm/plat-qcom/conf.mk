@@ -53,3 +53,8 @@ endif
 # Include arch/target specific configurations if present
 -include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/qcom-arch.mk
 -include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/$(PLATFORM_FLAVOR)/target.mk
+
+# IPCC (Inter-Processor Communication Controller). Enabled from the target.mk
+# of a chipset that has one; everything else builds the driver stub, so that a
+# caller of the API links either way.
+CFG_QCOM_IPCC ?= n
