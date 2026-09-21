@@ -35,6 +35,7 @@ struct qcom_pas_data {
 	paddr_t fw_base;
 	size_t fw_size;
 	enum qcom_clk_group clk_group;
+	bool secure;
 };
 
 #endif /* _PAS_DATA_H_ */

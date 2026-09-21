@@ -460,10 +460,6 @@
 #define AOSS_CC_HPASS_CONFIG_RESTART			0x7040
 #define HPASS_RESTART_SS_RESTART_BIT			BIT(0)
 
-/*
- * SOCCP (SoC companion processor, RISC-V). Bus and functional clock branches
- * plus the core RCG, all in the central GCC window.
- */
 #define GCC_SOCCP_CNOC_M_AHB_CBCR			0x2e004
 #define GCC_SOCCP_CNOC_S_AHB_CBCR			0x2e008
 #define GCC_SOCCP_ANOC_AXI_CBCR				0x2e00c
@@ -479,35 +475,20 @@
 #define GCC_SOCCP_RCGR_SRC_DIV_MASK			0x1f
 #define SOCCP_CBCR_CLK_ENABLE_BIT			BIT(0)
 
-/*
- * SOCCP core RCG: source select = GPLL0_OUT_EVEN, divider = 1, which runs the
- * core at 300 MHz. Only SRC_SEL/SRC_DIV are programmed, so the rest of
- * CFG_RCGR is preserved (see soccp_set_core_rate).
- */
-#define SOCCP_RCG_SRC_SEL				0x6
-#define SOCCP_RCG_SRC_DIV				0x1
+#define SOCCP_RCG_SRC_SEL_VAL				0x6
+#define SOCCP_RCG_SRC_DIV_VAL				0x1
 
-/*
- * SOCCP subsystem restart, offsets within the AOSS_CC reset-control window.
- * SS_RESTART is bit 0 of both.
- */
-#define AOSS_CC_SOCCP_RESTART				0x7024
-#define AOSS_CC_SOCCP_CONFIG_RESTART			0x7050
-#define AOSS_CC_SS_RESTART_BIT				BIT(0)
-
-/*
- * SOCCP boot suppression, offset within the SOCCP CSR window. The core starts
- * executing as soon as the AOSS reset is released, so this holds it off until
- * the firmware has been authenticated and loaded.
- */
-#define SOCCP_RVSSMP_BOOT_SUPPRESS			0x30010
-#define SOCCP_BOOT_SUPPRESS_BIT				BIT(0)
+#define SOCCP_SOCCP_RVSSMP_BOOT_SUPPRESS		0x30010
 
 #define QDSS_SOCCP_SOCCP_DMCONTROL			0x40
 #define QDSS_SOCCP_SOCCP_DMI_DMSTATUS			0x44
 #define SOCCP_DMCONTROL_DMACTIVE_BIT			BIT(0)
 #define SOCCP_DMCONTROL_SETRESETHALTREQ_BIT		BIT(3)
 #define SOCCP_DMI_DMSTATUS_ANYHAVERESET_BIT		BIT(18)
+
+#define AOSS_CC_SOCCP_RESTART				0x7024
+#define AOSS_CC_SOCCP_CONFIG_RESTART			0x7050
+#define SOCCP_RESTART_SS_RESTART_BIT			BIT(0)
 
 #endif /* CFG_QCOM_PAS_PTA */
 
