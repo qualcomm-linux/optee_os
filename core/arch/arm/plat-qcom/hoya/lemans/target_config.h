@@ -97,4 +97,30 @@
 
 #define TITAN_SS_BASE			UL(0x0ac00000)
 #define TITAN_SS_SIZE			UL(0x00200000)
+
+/*
+ * IPCC block. Base mirrors the TZ HWIO layout (IPC_ROUTER_TOP_BASE in
+ * msmhwiobase.h); the window covers every client page as well as the
+ * IPC_CONFIG and IPC_TRACE blocks.
+ */
+#define IPCC_BASE			UL(0x00400000)
+#define IPCC_SIZE			UL(0x00200000)
+
+/*
+ * Distance between the register banks of two protocols and of two client
+ * pages within one protocol.
+ */
+#define IPCC_PROTO_STRIDE		UL(0x00040000)
+#define IPCC_CLIENT_STRIDE		UL(0x00001000)
+
+/* IPC_CONFIG and IPC_TRACE, offset from the controller base */
+#define IPCC_TOP_MODE_BLOCK_OFF		UL(0x001fc000)
+#define IPCC_TRACE_BLOCK_OFF		UL(0x001fd000)
+
+/* Signals per client page on the MPROC protocol */
+#define IPCC_MPROC_NUM_SIGS		8
+
+/* Shared router-mode Rx interrupt of MPROC, absolute GIC it-number */
+#define IPCC_MPROC_IRQ			264
+
 #endif /* TARGET_CONFIG_H */
