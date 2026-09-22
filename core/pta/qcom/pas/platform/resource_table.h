@@ -63,6 +63,19 @@
 	}
 
 /*
+ * RESOURCE_TABLE_OFFSET_LAST(prefix) : last valid index into the offset[]
+ * flexible array member for a table with PREFIX_NUM_MEM_RESOURCES entries.
+ *
+ * Use as the designator in the table initialiser, e.g.
+ * ".offset[RESOURCE_TABLE_OFFSET_LAST(prefix)] = 0", to force the compiler
+ * to reserve storage for all entries. Clamped to 0 when there are no
+ * entries, so a table with an empty mem_res array still compiles instead of
+ * indexing offset[-1].
+ */
+#define RESOURCE_TABLE_OFFSET_LAST(prefix) \
+	(prefix##_NUM_MEM_RESOURCES ? (prefix##_NUM_MEM_RESOURCES - 1) : 0)
+
+/*
  * resource_table : top-level header of the firmware resource table.
  *
  * @ver:      Table version; must be 1.
