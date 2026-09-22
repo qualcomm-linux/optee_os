@@ -32,9 +32,10 @@ ifneq ($(filter y,$(CFG_QCOM_QFPROM_FUSEPROV) $(CFG_QCOM_FUSE_PTA)),)
 $(call force,CFG_QCOM_QFPROM,y)
 endif
 
-ifeq ($(CFG_QCOM_QFPROM),y)
-# Fuse blowing needs the smpa4 supply rail the SoC requires for
-# programming, voted over RPMH.
+# CMD_DB and the RPMh client are needed for fuse-blow rail voting (QFPROM)
+# and QUPv3 clock set-rate CX/MX voting (CLK_CFG).
+CFG_QCOM_CLK_CFG ?= y
+ifneq ($(filter y,$(CFG_QCOM_QFPROM) $(CFG_QCOM_CLK_CFG)),)
 $(call force,CFG_QCOM_RPMH_CLIENT,y)
 $(call force,CFG_QCOM_CMD_DB,y)
 endif
