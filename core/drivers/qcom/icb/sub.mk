@@ -6,3 +6,8 @@
 global-incdirs-y += include
 
 srcs-$(CFG_QCOM_ICB) += icbuarb.c
+
+global-incdirs-y += $(PLATFORM_FLAVOR)
+
+srcs-$(CFG_QCOM_ICB) += $(PLATFORM_FLAVOR)/icbuarb_target.c
+srcs-$(CFG_QCOM_ICB) += $(PLATFORM_FLAVOR)/u_data.c
