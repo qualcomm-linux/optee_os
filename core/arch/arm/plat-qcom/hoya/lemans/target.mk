@@ -43,3 +43,11 @@ ifeq ($(CFG_QCOM_CLK_CFG),y)
 $(call force,CFG_QCOM_CMD_DB,y)
 $(call force,CFG_QCOM_RPMH_CLIENT,y)
 endif
+
+CFG_QCOM_ICB ?= y
+ifeq ($(CFG_QCOM_ICB),y)
+$(call force,CFG_QCOM_CMD_DB,y)
+$(call force,CFG_QCOM_RPMH_CLIENT,y)
+# u_data.c defines 62 routes.
+CFG_QCOM_ICB_MAX_CLIENTS = 64
+endif
