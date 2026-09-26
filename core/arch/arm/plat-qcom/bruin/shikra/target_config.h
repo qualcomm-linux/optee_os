@@ -9,6 +9,9 @@
 #define DRAM0_BASE			UL(0x80000000)
 #define DRAM0_SIZE			UL(0x80000000)
 
+#define GCC_BASE			UL(0x01400000)
+#define GCC_SIZE			UL(0x001f0000)
+
 #define GENI_UART_REG_BASE		UL(0x04a80000)
 
 #define IMEM_BASE			UL(0x0c100000)
