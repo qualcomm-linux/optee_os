@@ -4,6 +4,7 @@
 # Qualcomm Cacao platform configuration.
 
 $(call force,CFG_TEE_CORE_NB_CORE,8)
+CFG_QCOM_UART_CONSOLE := n
 
 # DARE-TZ secure memory regions. DARE is an in-line memory encryption
 # IP on Wildcat; it is set up by the TME root-of-trust before OP-TEE
