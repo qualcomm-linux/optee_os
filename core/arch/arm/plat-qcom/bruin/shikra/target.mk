@@ -1,1 +1,1 @@
-# Placeholder for target specific configs.
+CFG_QCOM_IPCC ?= y
