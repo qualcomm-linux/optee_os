@@ -196,6 +196,26 @@ static TEE_Result cmd_ice_get_raw_secret(uint32_t param_types,
 					       &params[1].memref.size);
 }
 
+static TEE_Result cmd_has_wrapped_key_support(uint32_t param_types,
+					      TEE_Param params[TEE_NUM_PARAMS])
+{
+	struct hwkm_drv_ctx *ctx = NULL;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	ctx = hwkm_get_context();
+	if (ctx)
+		params[0].value.a = 1;
+	else
+		params[0].value.a = 0;
+
+	return TEE_SUCCESS;
+}
 
 /* PTA command dispatcher */
 static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
@@ -215,6 +235,8 @@ static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 		return cmd_ice_export_key(param_types, params);
 	case PTA_CMD_ICE_GET_RAW_SECRET:
 		return cmd_ice_get_raw_secret(param_types, params);
+	case PTA_CMD_ICE_HAS_WRAPPED_KEY_SUPPORT:
+		return cmd_has_wrapped_key_support(param_types, params);
 	default:
 		break;
 	}
