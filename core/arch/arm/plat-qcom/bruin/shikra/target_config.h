@@ -14,4 +14,7 @@
 #define IMEM_BASE			UL(0x0c100000)
 #define IMEM_SIZE			UL(0x00020000)
 
+#define IRIS_BASE			UL(0x05a00000)
+#define IRIS_SIZE			ULL(0x00100000)
+
 #endif /* TARGET_CONFIG_H */
