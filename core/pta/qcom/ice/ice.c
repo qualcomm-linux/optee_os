@@ -8,26 +8,213 @@
 #include <pta_qcom_ice.h>
 #include <tee_api_defines_extensions.h>
 #include <trace.h>
+#include <drivers/hwkm.h>
 
+#include "hwkm/ice_hwkm.h"
 #include "sw_keys/ice_sw_keys.h"
 
 /*
  * Controller-agnostic entry points. These wrap the per-controller
  * implementation so the dispatcher stays independent of the underlying ICE
- * block. Only software-key programming exists today; a future hardware-key
- * (HWKM) path can be selected here at runtime, based on the key size passed
- * to the PTA, dispatching to hwkm_cmd_ice_*() instead of sw_cmd_ice_*().
+ * block. A hardware-key (HWKM) path is selected here at runtime, based on
+ * whether HWKM context is initialized and available.
  */
 static TEE_Result cmd_ice_invalidate_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
 {
-	return sw_cmd_ice_invalidate_key(param_types, params);
+	struct hwkm_drv_ctx *ctx = NULL;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	ctx = hwkm_get_context();
+	if (!ctx)
+		return sw_cmd_ice_invalidate_key(params);
+
+	return clear_ice_slave_slot_hwkm(params[0].value.a);
 }
 
 static TEE_Result cmd_ice_set_config_key(uint32_t param_types,
 					 TEE_Param params[TEE_NUM_PARAMS])
 {
-	return sw_cmd_ice_set_config_key(param_types, params);
+	uint32_t slot = 0;
+	const uint8_t *key_buf = NULL;
+	size_t key_len = 0;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	key_len = params[2].memref.size;
+	if (key_len != HWKM_MAX_BLOB_SIZE)
+		return sw_cmd_ice_set_config_key(param_types, params);
+
+	slot = params[0].value.a;
+	key_buf = params[2].memref.buffer;
+	if (!key_buf)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	return set_config_ice_key_using_hwkm(slot, key_buf,
+					     key_len);
+}
+
+static TEE_Result cmd_ice_generate_key(uint32_t param_types,
+				       TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[0].memref.buffer) {
+		if (params[0].memref.size == 0) {
+			params[0].memref.size = HWKM_MAX_BLOB_SIZE;
+			return TEE_ERROR_SHORT_BUFFER;
+		}
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	if (params[0].memref.size < HWKM_MAX_BLOB_SIZE) {
+		params[0].memref.size = HWKM_MAX_BLOB_SIZE;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	return generate_hw_wrapped_key(params[0].memref.buffer,
+				       &params[0].memref.size);
+}
+
+static TEE_Result cmd_ice_import_key(uint32_t param_types,
+				     TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[0].memref.buffer || !params[0].memref.size ||
+	    params[0].memref.size > HWKM_MAX_KEY_SIZE)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[1].memref.buffer) {
+		if (params[1].memref.size == 0) {
+			params[1].memref.size = HWKM_MAX_BLOB_SIZE;
+			return TEE_ERROR_SHORT_BUFFER;
+		}
+
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	if (params[1].memref.size < HWKM_MAX_BLOB_SIZE) {
+		params[1].memref.size = HWKM_MAX_BLOB_SIZE;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	return import_and_wrap_with_hw_key(params[0].memref.buffer,
+					   params[0].memref.size,
+					   params[1].memref.buffer,
+					   &params[1].memref.size);
+}
+
+
+static TEE_Result cmd_ice_export_key(uint32_t param_types,
+				     TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[0].memref.buffer || params[0].memref.size != HWKM_MAX_BLOB_SIZE)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[1].memref.buffer) {
+		if (params[1].memref.size == 0) {
+			params[1].memref.size = HWKM_MAX_BLOB_SIZE;
+			return TEE_ERROR_SHORT_BUFFER;
+		}
+
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	if (params[1].memref.size < HWKM_MAX_BLOB_SIZE) {
+		params[1].memref.size = HWKM_MAX_BLOB_SIZE;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	return export_hw_wrapped_key(params[0].memref.buffer,
+				     params[0].memref.size,
+				     params[1].memref.buffer,
+				     &params[1].memref.size);
+}
+
+static TEE_Result cmd_ice_get_raw_secret(uint32_t param_types,
+					 TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+						TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[0].memref.buffer || params[0].memref.size != HWKM_MAX_BLOB_SIZE)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (!params[1].memref.buffer) {
+		if (params[1].memref.size == 0) {
+			params[1].memref.size = ICE_RAW_SECRET_SIZE_BYTES;
+			return TEE_ERROR_SHORT_BUFFER;
+		}
+		return TEE_ERROR_BAD_PARAMETERS;
+	}
+
+	if (params[1].memref.size != ICE_RAW_SECRET_SIZE_BYTES) {
+		params[1].memref.size = ICE_RAW_SECRET_SIZE_BYTES;
+		return TEE_ERROR_SHORT_BUFFER;
+	}
+
+	return get_raw_secret_from_wrapped_key(params[0].memref.buffer,
+					       params[0].memref.size,
+					       params[1].memref.buffer,
+					       &params[1].memref.size);
+}
+
+static TEE_Result cmd_has_wrapped_key_support(uint32_t param_types,
+					      TEE_Param params[TEE_NUM_PARAMS])
+{
+	struct hwkm_drv_ctx *ctx = NULL;
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	ctx = hwkm_get_context();
+	if (ctx)
+		params[0].value.a = 1;
+	else
+		params[0].value.a = 0;
+
+	return TEE_SUCCESS;
 }
 
 /* PTA command dispatcher */
@@ -40,6 +227,16 @@ static TEE_Result invoke_command(void *sess_ctx __unused, uint32_t cmd_id,
 		return cmd_ice_invalidate_key(param_types, params);
 	case PTA_CMD_ICE_SET_CONFIG_KEY:
 		return cmd_ice_set_config_key(param_types, params);
+	case PTA_CMD_ICE_GENERATE_KEY:
+		return cmd_ice_generate_key(param_types, params);
+	case PTA_CMD_ICE_IMPORT_KEY:
+		return cmd_ice_import_key(param_types, params);
+	case PTA_CMD_ICE_EXPORT_KEY:
+		return cmd_ice_export_key(param_types, params);
+	case PTA_CMD_ICE_GET_RAW_SECRET:
+		return cmd_ice_get_raw_secret(param_types, params);
+	case PTA_CMD_ICE_HAS_WRAPPED_KEY_SUPPORT:
+		return cmd_has_wrapped_key_support(param_types, params);
 	default:
 		break;
 	}
