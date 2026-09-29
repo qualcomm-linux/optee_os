@@ -1,5 +1,8 @@
 # Nord (SA8797P / Oryon) OP-TEE platform.
 
+CFG_DRIVERS_CLK ?= y
+CFG_DRIVERS_QCOM_CLK ?= y
+
 # Threads are expensive in OP-TEE, so they don't have
 # to be same as number of cores.
 $(call force,CFG_TEE_CORE_NB_CORE,18)
@@ -11,9 +14,6 @@ $(call force,CFG_TEE_CORE_NB_CORE,18)
 CFG_TZDRAM_START ?= 0xBC600000
 CFG_TEE_RAM_VA_SIZE ?= 0x00200000
 CFG_TA_RAM_VA_SIZE ?= 0x07800000
-
-CFG_DRIVERS_CLK ?= y
-CFG_DRIVERS_QCOM_CLK ?= y
 
 # QUPv3 serial-engine (bus) clock set-rate/DFS walker, consumed on-demand by a
 # future TEE-side SPI/I2C driver. Set-rate votes CX/MX via RPMh, so pull
@@ -41,3 +41,6 @@ CFG_PAS_MD_SLOTS ?= 8
 CFG_RESERVED_VASPACE_SIZE ?= (64 * 1024 * 1024)
 CFG_IN_TREE_EARLY_TAS += qcom_pas/cff7d191-7ca0-4784-af13-48223b9a4fbe
 endif
+CFG_TA_RAM_VA_SIZE ?= 0x07B80000
+
+CFG_QCOM_PAS_PTA ?= y

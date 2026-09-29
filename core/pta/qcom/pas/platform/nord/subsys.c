@@ -10,13 +10,8 @@
 
 #include "camera.h"
 #include "iris.h"
-#include "nspss0.h"
-#include "nspss1.h"
-#include "nspss2.h"
-#include "nspss3.h"
-#include "hpass0.h"
-#include "hpass1.h"
-#include "hpass2.h"
+#include "hpass.h"
+#include "nspss.h"
 #include "pas_subsys.h"
 
 static struct qcom_pas_subsys subsystems[] = {
@@ -31,6 +26,14 @@ static struct qcom_pas_subsys subsystems[] = {
 	},
 	{
 		.data = {
+			.pas_id = DTB_ID_TURING,
+			.clk_group = QCOM_CLKS_TURING,
+		},
+		.ops = &nspss0_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
+	},	
+	{
+		.data = {
 			.pas_id = PAS_ID_TURING,
 			.base.pa = CDSP_0_BASE,
 			.size = CDSP_0_SIZE,
@@ -38,6 +41,14 @@ static struct qcom_pas_subsys subsystems[] = {
 		},
 		.ops = &nspss0_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
+	},
+	{
+		.data = {
+			.pas_id = DTB_ID_TURING1,
+			.clk_group = QCOM_CLKS_TURING1,
+		},
+		.ops = &nspss1_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
 	},
 	{
 		.data = {
@@ -51,6 +62,14 @@ static struct qcom_pas_subsys subsystems[] = {
 	},
 	{
 		.data = {
+			.pas_id = DTB_ID_TURING2,
+			.clk_group = QCOM_CLKS_TURING2,
+		},
+		.ops = &nspss2_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
+	},
+	{
+		.data = {
 			.pas_id = PAS_ID_TURING2,
 			.base.pa = CDSP_2_BASE,
 			.size = CDSP_2_SIZE,
@@ -58,6 +77,14 @@ static struct qcom_pas_subsys subsystems[] = {
 		},
 		.ops = &nspss2_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
+	},
+	{
+		.data = {
+			.pas_id = DTB_ID_TURING3,
+			.clk_group = QCOM_CLKS_TURING3,
+		},
+		.ops = &nspss3_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
 	},
 	{
 		.data = {
@@ -71,6 +98,14 @@ static struct qcom_pas_subsys subsystems[] = {
 	},
 	{
 		.data = {
+			.pas_id = DTB_ID_HPASS0,
+			.clk_group = QCOM_CLKS_HPASS0,
+		},
+		.ops = &hpass0_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
+	},
+	{
+		.data = {
 			.pas_id = PAS_ID_QDSP6,
 			.base.pa = HPASS_0_BASE,
 			.size = HPASS_0_SIZE,
@@ -81,6 +116,14 @@ static struct qcom_pas_subsys subsystems[] = {
 	},
 	{
 		.data = {
+			.pas_id = DTB_ID_HPASS1,
+			.clk_group = QCOM_CLKS_HPASS1,
+		},
+		.ops = &hpass1_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
+	},
+	{
+		.data = {
 			.pas_id = PAS_ID_HPASS1,
 			.base.pa = HPASS_1_BASE,
 			.size = HPASS_1_SIZE,
@@ -88,6 +131,14 @@ static struct qcom_pas_subsys subsystems[] = {
 		},
 		.ops = &hpass1_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
+	},
+	{
+		.data = {
+			.pas_id = DTB_ID_HPASS2,
+			.clk_group = QCOM_CLKS_HPASS2,
+		},
+		.ops = &hpass2_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
 	},
 	{
 		.data = {
