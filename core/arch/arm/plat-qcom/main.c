@@ -17,8 +17,10 @@
  * Register the physical memory area for peripherals etc. Here we are
  * registering the UART console.
  */
+#ifdef CFG_QCOM_UART_CONSOLE
 register_phys_mem_pgdir(MEM_AREA_IO_NSEC, GENI_UART_REG_BASE,
 			GENI_UART_REG_SIZE);
+#endif
 
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, GICD_BASE, GIC_DIST_REG_SIZE);
 #ifdef _CFG_ARM_GIC_V3_OR_V4
@@ -50,8 +52,10 @@ void plat_trace_init(void)
 
 void plat_console_init(void)
 {
+#ifdef CFG_QCOM_UART_CONSOLE
 	qcom_geni_uart_init(&console_data, GENI_UART_REG_BASE);
 	register_serial_console(&console_data.chip);
+#endif
 }
 
 static TEE_Result platform_banner(void)

@@ -17,6 +17,7 @@ $(call force,CFG_CORE_ARM64_PA_BITS,40)
 $(call force,CFG_CORE_LARGE_PHYS_ADDR,y)
 $(call force,CFG_CORE_RESERVED_SHM,n)
 $(call force,CFG_QCOM_GENI_UART,y)
+CFG_QCOM_UART_CONSOLE ?= y
 $(call force,CFG_CRYPTO_WITH_CE,y)
 $(call force,CFG_HW_UNIQUE_KEY_LENGTH,32)
 
