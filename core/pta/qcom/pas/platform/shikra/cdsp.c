@@ -18,7 +18,66 @@
  */
 #define TURING_QDSP6SS_RST_EVB		0x300010
 
-static const struct fw_rsc_devmem cdsp_mem_res[] = { };
+static const struct fw_rsc_devmem cdsp_mem_res[] = {
+    { .name = "cdsp_0",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x00340000, .pa = 0x00340000, .len = 0x00040000 },
+    { .name = "cdsp_1",  .flags = IOMMU_READ,
+      .da = 0x003C0000, .pa = 0x003C0000, .len = 0x0002B000 },
+    { .name = "cdsp_2",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x003EB000, .pa = 0x003EB000, .len = 0x00001000 },
+    { .name = "cdsp_3",  .flags = IOMMU_READ,
+      .da = 0x003EC000, .pa = 0x003EC000, .len = 0x00004000 },
+    { .name = "cdsp_4",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x003F2000, .pa = 0x003F2000, .len = 0x00001000 },
+    { .name = "cdsp_5",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x003F8000, .pa = 0x003F8000, .len = 0x00001000 },
+    { .name = "cdsp_6",  .flags = IOMMU_READ,
+      .da = 0x003F9000, .pa = 0x003F9000, .len = 0x00001000 },
+    { .name = "cdsp_7",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x00400000, .pa = 0x00400000, .len = 0x00800000 },
+    { .name = "cdsp_8",  .flags = IOMMU_READ,
+      .da = 0x01400000, .pa = 0x01400000, .len = 0x00004000 },
+    { .name = "cdsp_9",  .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01404000, .pa = 0x01404000, .len = 0x00001000 },
+    { .name = "cdsp_10", .flags = IOMMU_READ,
+      .da = 0x01405000, .pa = 0x01405000, .len = 0x0000B000 },
+    { .name = "cdsp_11", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01410000, .pa = 0x01410000, .len = 0x00001000 },
+    { .name = "cdsp_12", .flags = IOMMU_READ,
+      .da = 0x01411000, .pa = 0x01411000, .len = 0x00001000 },
+    { .name = "cdsp_13", .flags = IOMMU_READ,
+      .da = 0x01413000, .pa = 0x01413000, .len = 0x00004000 },
+    { .name = "cdsp_14", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01417000, .pa = 0x01417000, .len = 0x00002000 },
+    { .name = "cdsp_15", .flags = IOMMU_READ,
+      .da = 0x01419000, .pa = 0x01419000, .len = 0x00006000 },
+    { .name = "cdsp_16", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x0141F000, .pa = 0x0141F000, .len = 0x00001000 },
+    { .name = "cdsp_17", .flags = IOMMU_READ,
+      .da = 0x01420000, .pa = 0x01420000, .len = 0x00008000 },
+    { .name = "cdsp_18", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01428000, .pa = 0x01428000, .len = 0x001C8000 },
+    { .name = "cdsp_19", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x018EA000, .pa = 0x018EA000, .len = 0x00001000 },
+    { .name = "cdsp_20", .flags = IOMMU_READ,
+      .da = 0x01B40000, .pa = 0x01B40000, .len = 0x00010000 },
+    { .name = "cdsp_21", .flags = IOMMU_READ,
+      .da = 0x01B8A000, .pa = 0x01B8A000, .len = 0x00001000 },
+    { .name = "cdsp_22", .flags = IOMMU_READ,
+      .da = 0x0445B000, .pa = 0x0445B000, .len = 0x00001000 },
+    { .name = "cdsp_23", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x045F3000, .pa = 0x045F3000, .len = 0x00001000 },
+    { .name = "cdsp_24", .flags = IOMMU_READ,
+      .da = 0x045F6000, .pa = 0x045F6000, .len = 0x00001000 },
+    { .name = "cdsp_25", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x0E000000, .pa = 0x0E000000, .len = 0x01000000 },
+    /* DSP takes a translation fault on its first SMEM access.
+     * Without this mapping it hits an mmu fault/watchdog and
+     * never reaches the running state.
+     */
+    { .name = "smem", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x86000000, .pa = 0x86000000, .len = 0x200000, },
+};
 
 DEFINE_RESOURCE_TABLE(CDSP, ARRAY_SIZE(cdsp_mem_res));
 
