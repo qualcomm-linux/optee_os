@@ -22,9 +22,9 @@
 #include <util.h>
 
 #include "rpmh_hal.h"
-#include "rpmh_msgram_config.h"
 #include "rpmh_resource_commands.h"
 #include "rpmh_tcs.h"
+#include "rpmh_hwio.h"
 
 register_phys_mem_pgdir(MEM_AREA_IO_NSEC, AOP_MSG_RAM_BASE,
 			CORE_MMU_PGDIR_SIZE);

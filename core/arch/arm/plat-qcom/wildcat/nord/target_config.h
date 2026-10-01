@@ -30,6 +30,17 @@
 
 #define GICD_BASE			UL(0x17000000)
 #define GICR_BASE			UL(0x17080000)
+#define AOP_CMD_DB_BASE			UL(0x87148000)
+ 
+#define AOP_CMD_DB_SIZE			UL(0x2000)
+
+#define AOP_MSG_RAM_BASE		UL(0x0C300000)
+#define AOP_MSG_RAM_SIZE		UL(0x00100000)
+#define MSG_RAM_SECTION_SIZE            UL(0x00001000)
+
+#define RPMH_BASE_ADDR			UL(0x18900000)
+#define RPMH_RSC_SIZE			UL(0x10000)
+
 
 /*
  * AOSS_CC reset control, which owns the SOCCP subsystem-restart registers, and
@@ -67,17 +78,11 @@
 #define RPMH_PDC_GLOBAL_BASE		UL(0x0b5e6000)
 #define RPMH_PDC_GLOBAL_SIZE		UL(0x0000a000)
 
-#define AOP_MSG_RAM_BASE		UL(0x0c300000)
-#define AOP_MSG_RAM_SIZE		UL(0x00100000)
-
 #define QDSS_SOCCP_DMI_BASE		UL(0x11508000)
 #define QDSS_SOCCP_DMI_SIZE		UL(0x00001000)
 
 #define IMEM_BASE			UL(0x14680000)
 #define IMEM_SIZE			UL(0x32000)
-
-#define RPMH_BASE_ADDR			UL(0x18200000)
-#define RPMH_RSC_SIZE			UL(0x40000)
 
 #define CDSP_0_BASE			UL(0x1f0c8000)
 #define CDSP_0_SIZE			UL(0x00280000)
@@ -95,11 +100,11 @@
 #define FUSE_CONTROLLER_SW_RANGE4_SIZE	UL(0x00001000)
 
 #define DRAM0_BASE			UL(0x80000000)
-#define DRAM0_SIZE			UL(0x80000000)
-#define DRAM1_BASE			ULL(0x880000000)
-#define DRAM1_SIZE			ULL(0x780000000)
-#define DRAM2_BASE			ULL(0x8800000000)
-#define DRAM2_SIZE			ULL(0x3800000000)
+#define DRAM0_SIZE                     UL(0x80000000)
+#define DRAM1_BASE                     ULL(0x880000000)
+#define DRAM1_SIZE                     ULL(0x780000000)
+#define DRAM2_BASE                     ULL(0x8800000000)
+#define DRAM2_SIZE                     ULL(0x3800000000)
 
 /*
  * The cmd_db blob is placed in DDR at boot; its base is published as a word in
@@ -109,8 +114,6 @@
 #define AOP_CMD_DB_PTR_ADDR		(AOP_MSG_RAM_BASE + \
 					 AOP_MSG_RAM_SIZE - UL(0xF1000) + \
 					 UL(0xC))
-#define AOP_CMD_DB_BASE			UL(0x90860000)
-#define AOP_CMD_DB_SIZE			UL(0x00020000)
 
 #define CFG_SEC_ELF_DDR_ADDR		UL(0x908ff000)
 #define CFG_SEC_ELF_DDR_SIZE		UL(0x1000)
