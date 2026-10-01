@@ -14,4 +14,7 @@
 #define IMEM_BASE			UL(0x0c100000)
 #define IMEM_SIZE			UL(0x00020000)
 
+#define TLMM_BASE			UL(0x00400000)
+#define TLMM_BASE_SIZE			UL(0x00800000)
+
 #endif /* TARGET_CONFIG_H */
