@@ -68,7 +68,68 @@
 #define MCU_RVCP_SID_BMSK			0xf
 #define MCU_RVCP_SID_SHFT			0
 
-static const struct fw_rsc_devmem lmcu_mem_res[] = { };
+static const struct fw_rsc_devmem lmcu_mem_res[] = {
+    { .name = "tcsr_mutex", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x00340000, .pa = 0x00340000, .len = 0x00008000, },
+    { .name = "tcsr_wonce", .flags = IOMMU_READ,
+      .da = 0x003D4000, .pa = 0x003D4000, .len = 0x00001000, },
+    { .name = "tcsr_intr", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x003E1000, .pa = 0x003E1000, .len = 0x00001000, },
+    { .name = "tlmm_reg", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x00500000, .pa = 0x00500000, .len = 0x00700000, },
+    { .name = "gcc_clk_ctl_0", .flags = IOMMU_READ,
+      .da = 0x01400000, .pa = 0x01400000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_1", .flags = IOMMU_READ,
+      .da = 0x01406000, .pa = 0x01406000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_2", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01410000, .pa = 0x01410000, .len = 0x00002000, },
+    { .name = "gcc_clk_ctl_3", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x0141F000, .pa = 0x0141F000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_4", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01423000, .pa = 0x01423000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_5", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01428000, .pa = 0x01428000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_6", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01475000, .pa = 0x01475000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_rg170", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x014AA000, .pa = 0x014AA000, .len = 0x00001000, },
+    { .name = "gcc_clk_ctl_rg179", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x014B3000, .pa = 0x014B3000, .len = 0x00001000, },
+    { .name = "system_noc", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x018E8000, .pa = 0x018E8000, .len = 0x00001000, },
+    { .name = "spmi_cfg_top", .flags = IOMMU_READ,
+      .da = 0x01C00000, .pa = 0x01C00000, .len = 0x00030000, },
+    { .name = "pmic_arb_core", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x01C40000, .pa = 0x01C40000, .len = 0x00010000, },
+    { .name = "pmic_arb_mgpi", .flags = IOMMU_READ,
+      .da = 0x01C60000, .pa = 0x01C60000, .len = 0x00081000, },
+    { .name = "pmic_arb_obs", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x03E00000, .pa = 0x03E00000, .len = 0x00100000, },
+    { .name = "spmi_pic_owner", .flags = IOMMU_READ,
+      .da = 0x03F00000, .pa = 0x03F00000, .len = 0x000A0000, },
+    { .name = "rpm_msg_ram_rw", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x045F2000, .pa = 0x045F2000, .len = 0x00001000, },
+    { .name = "rpm_msg_ram_ro", .flags = IOMMU_READ,
+      .da = 0x045F6000, .pa = 0x045F6000, .len = 0x00001000, },
+    { .name = "qdss_mcu_debug", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x08980000, .pa = 0x08980000, .len = 0x00010000, },
+    { .name = "mcu_dls", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x0B940000, .pa = 0x0B940000, .len = 0x000C0000, },
+    { .name = "wcss_wrapper", .flags = 0,
+      .da = 0x0C800000, .pa = 0x0C800000, .len = 0x00800000, },
+    { .name = "qdss_stm", .flags = IOMMU_WRITE,
+      .da = 0x0E000000, .pa = 0x0E000000, .len = 0x01000000, },
+    { .name = "pimem", .flags = 0,
+      .da = 0x10000000, .pa = 0x10000000, .len = 0x04000000, },
+    /* DSP takes a translation fault on its first SMEM access.
+     * Without this mapping it hits an mmu fault/watchdog and
+     * never reaches the running state.
+     */
+    { .name = "smem", .flags = IOMMU_READ | IOMMU_WRITE,
+      .da = 0x86000000, .pa = 0x86000000, .len = 0x200000, },
+};
+
+
 
 DEFINE_RESOURCE_TABLE(LMCU, ARRAY_SIZE(lmcu_mem_res));
 
