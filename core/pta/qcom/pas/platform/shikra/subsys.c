@@ -9,6 +9,7 @@
 #include <util.h>
 
 #include "cdsp.h"
+#include "lmcu.h"
 #include "pas_subsys.h"
 
 static struct qcom_pas_subsys subsystems[] = {
@@ -20,6 +21,24 @@ static struct qcom_pas_subsys subsystems[] = {
 			.clk_group = QCOM_CLKS_TURING,
 		},
 		.ops = &cdsp_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
+	},
+	{
+		.data = {
+			.pas_id = DTB_ID_LMCU,
+			.clk_group = QCOM_CLKS_LMCU,
+		},
+		.ops = &lmcu_dtb_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
+	},
+	{
+		.data = {
+			.pas_id = PAS_ID_LMCU,
+			.base.pa = MCU_MCU_CNOC_MASTER_BASE,
+			.size = MCU_MCU_CNOC_MASTER_SIZE,
+			.clk_group = QCOM_CLKS_LMCU,
+		},
+		.ops = &lmcu_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
 	},
 };
