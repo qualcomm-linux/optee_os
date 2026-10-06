@@ -1,1 +1,1 @@
-srcs-y += core_pos_a64.S
+subdirs-y += $(PLATFORM_FLAVOR)
