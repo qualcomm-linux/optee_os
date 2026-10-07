@@ -13,6 +13,12 @@
 #define AOP_CMD_DB_BASE			UL(0x90860000)
 #define AOP_CMD_DB_SIZE			UL(0x00020000)
 
+#define RPMH_BASE_ADDR                  UL(0x18200000)
+#define RPMH_RSC_SIZE                   UL(0x40000)
+
+#define MSG_RAM_SECTION_SIZE            UL(0x00010000)
+#define AOP_BOOT_COOKIE_SECTION         UL(0xf)
+
 #define CFG_SEC_ELF_DDR_ADDR		UL(0x908FF000)
 #define CFG_SEC_ELF_DDR_SIZE		UL(0x1000)
 
