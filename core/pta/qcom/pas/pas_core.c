@@ -51,6 +51,7 @@ TEE_Result pas_platform_mem_setup(uint32_t pas_id, uint32_t fw_size,
 {
 	struct qcom_pas_subsys *subsys = qcom_pas_lookup(pas_id);
 	struct qcom_pas_data *data = NULL;
+	enum teecore_memtypes type = MEM_AREA_IO_NSEC;
 
 	if (!subsys)
 		return TEE_ERROR_NOT_SUPPORTED;
@@ -60,16 +61,18 @@ TEE_Result pas_platform_mem_setup(uint32_t pas_id, uint32_t fw_size,
 	data->fw_base = fw_base_low;
 	data->fw_base |= SHIFT_U64(fw_base_high, 32);
 
-	/* Window-less images (e.g. a DTB blob) carry only fw_base/fw_size. */
-	if (data->size && !data->base.va) {
-		enum teecore_memtypes type = data->secure ? MEM_AREA_IO_SEC :
-							     MEM_AREA_IO_NSEC;
-
-		data->base.va = (vaddr_t)core_mmu_add_mapping(type,
+	/* Map the controller */
+	if (data->size) {
+		if (!data->base.pa)
+			return TEE_ERROR_BAD_PARAMETERS;
+		if (!data->base.va) {
+			type = data->secure ? MEM_AREA_IO_SEC : MEM_AREA_IO_NSEC;
+			data->base.va = (vaddr_t)core_mmu_add_mapping(type,
 							      data->base.pa,
 							      data->size);
-		if (!data->base.va)
-			return TEE_ERROR_GENERIC;
+			if (!data->base.va)
+				return TEE_ERROR_GENERIC;
+		}
 	}
 
 	return TEE_SUCCESS;
@@ -112,10 +115,6 @@ TEE_Result pas_platform_auth_and_reset(uint32_t pas_id)
 
 	switch (subsys->reset_seq) {
 	case QCOM_PAS_RESET_CLK_FULL:
-		res = qcom_clock_pas_reset(data->clk_group);
-		if (res != TEE_SUCCESS)
-			return res;
-
 		res = qcom_clock_enable(data->clk_group);
 		if (res != TEE_SUCCESS)
 			return res;
