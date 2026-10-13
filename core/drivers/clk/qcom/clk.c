@@ -51,6 +51,33 @@ register_phys_mem(MEM_AREA_IO_NSEC, GCC_BASE, GCC_SIZE);
 /* PLL_USER_CTL_U fields */
 #define PLL_USER_CTL_U_FINE_LOCK_DET	BIT(0)
 
+#define N6RF_PLL_L_VAL                           0x04
+#define N6RF_PLL_CAL_L_VAL                       0x08
+#define N6RF_PLL_USER_CTL                        0x0c
+#define N6RF_PLL_USER_CTL_U                      0x10
+#define N6RF_PLL_CONFIG_CTL                      0x18
+#define N6RF_PLL_CONFIG_CTL_U                    0x1c
+#define N6RF_PLL_CONFIG_CTL_U1                   0x20
+#define N6RF_PLL_TEST_CTL                        0x24
+#define N6RF_PLL_TEST_CTL_U                      0x28
+#define N6RF_PLL_OPMODE                          0x38
+#define N6RF_PLL_ALPHA_VAL                       0x40
+
+#define N6RF_PLL_CAL_L_VAL_MASK                  0x0000ffff
+#define N6RF_PLL_ALPHA_VAL_MASK                  0x0000ffff
+
+#define N6RF_PLL_USER_CTL_PLLOUT_MAIN            BIT(0)
+#define N6RF_PLL_USER_CTL_PLLOUT_EVEN            BIT(1)
+#define N6RF_PLL_USER_CTL_PLLOUT_ODD             BIT(2)
+#define N6RF_PLL_USER_CTL_PRE_DIV_SHIFT          16
+#define N6RF_PLL_USER_CTL_PRE_DIV_MASK           0x00070000
+#define N6RF_PLL_USER_CTL_POST_DIV_ODD_SHIFT     12
+#define N6RF_PLL_USER_CTL_POST_DIV_ODD_MASK      0x0000f000
+#define N6RF_PLL_USER_CTL_POST_DIV_EVEN_SHIFT    8
+#define N6RF_PLL_USER_CTL_POST_DIV_EVEN_MASK     0x00000f00
+#define N6RF_PLL_USER_CTL_U_FRAC_FORMAT_SEL      BIT(15)
+#define N6RF_PLL_LOCK_TIMEOUT_US                 1000
+
 TEE_Result qcom_clock_enable_cbc(vaddr_t cbcr)
 {
 	int ret = 0;
@@ -122,6 +149,68 @@ TEE_Result qcom_lucidevo_pll_enable(vaddr_t pll_base,
 	return TEE_SUCCESS;
 }
 
+TEE_Result qcom_lucidfastn6rf_pll_enable(
+	vaddr_t pll_base, const struct qcom_lucidfastn6rf_pll_config *cfg)
+{
+	uint32_t post_div_even = cfg->post_div_even;
+	uint32_t user_val = 0;
+	uint32_t user_val_u = 0;
+	int ret = 0;
+
+	io_write32(pll_base + N6RF_PLL_CONFIG_CTL, cfg->config_ctl);
+	io_write32(pll_base + N6RF_PLL_CONFIG_CTL_U, cfg->config_ctl_u);
+	io_write32(pll_base + N6RF_PLL_CONFIG_CTL_U1, cfg->config_ctl_u1);
+	io_write32(pll_base + N6RF_PLL_TEST_CTL, cfg->test_ctl);
+	io_write32(pll_base + N6RF_PLL_TEST_CTL_U, cfg->test_ctl_u);
+	io_write32(pll_base + N6RF_PLL_USER_CTL, cfg->user_ctl);
+	io_write32(pll_base + N6RF_PLL_USER_CTL_U, cfg->user_ctl_u);
+
+	io_mask32(pll_base + N6RF_PLL_L_VAL, cfg->l_val, PLL_L_VAL_L_MASK);
+	io_mask32(pll_base + N6RF_PLL_CAL_L_VAL, cfg->cal_l_val,
+		  N6RF_PLL_CAL_L_VAL_MASK);
+	io_mask32(pll_base + N6RF_PLL_ALPHA_VAL, cfg->alpha_val,
+		  N6RF_PLL_ALPHA_VAL_MASK);
+
+	user_val = io_read32(pll_base + N6RF_PLL_USER_CTL);
+	user_val &= ~(N6RF_PLL_USER_CTL_PRE_DIV_MASK |
+		      N6RF_PLL_USER_CTL_POST_DIV_ODD_MASK |
+		      N6RF_PLL_USER_CTL_POST_DIV_EVEN_MASK);
+	if (cfg->pre_div >= 1 && cfg->pre_div <= 8)
+		user_val |= SHIFT_U32(cfg->pre_div - 1,
+				      N6RF_PLL_USER_CTL_PRE_DIV_SHIFT) &
+			    N6RF_PLL_USER_CTL_PRE_DIV_MASK;
+	user_val |= SHIFT_U32(cfg->post_div_odd,
+			      N6RF_PLL_USER_CTL_POST_DIV_ODD_SHIFT) &
+		    N6RF_PLL_USER_CTL_POST_DIV_ODD_MASK;
+	if (post_div_even)
+		post_div_even--;
+	user_val |= SHIFT_U32(post_div_even,
+			      N6RF_PLL_USER_CTL_POST_DIV_EVEN_SHIFT) &
+		    N6RF_PLL_USER_CTL_POST_DIV_EVEN_MASK;
+	io_write32(pll_base + N6RF_PLL_USER_CTL, user_val);
+
+	user_val_u = io_read32(pll_base + N6RF_PLL_USER_CTL_U);
+	if (cfg->frac_mode_mn)
+		user_val_u |= N6RF_PLL_USER_CTL_U_FRAC_FORMAT_SEL;
+	user_val_u |= PLL_USER_CTL_U_FINE_LOCK_DET;
+	io_write32(pll_base + N6RF_PLL_USER_CTL_U, user_val_u);
+
+	io_write32(pll_base + N6RF_PLL_OPMODE, PLL_OPMODE_RUN);
+	io_setbits32(pll_base + PLL_MODE, PLL_MODE_RESET_N);
+
+	REG_POLL_TIMEOUT(pll_base + PLL_MODE, N6RF_PLL_LOCK_TIMEOUT_US, 1, &ret, pll_locked);
+	if (ret < 0)
+		return TEE_ERROR_TIMEOUT;
+
+	io_setbits32(pll_base + PLL_MODE, PLL_MODE_OUTCTRL);
+	io_setbits32(pll_base + N6RF_PLL_USER_CTL,
+		     N6RF_PLL_USER_CTL_PLLOUT_MAIN |
+		     N6RF_PLL_USER_CTL_PLLOUT_EVEN |
+		     N6RF_PLL_USER_CTL_PLLOUT_ODD);
+
+	return TEE_SUCCESS;
+}
+
 TEE_Result qcom_clock_set_rate(vaddr_t cfg_rcgr, vaddr_t cmd_rcgr,
 			       uint32_t cfg_value)
 {
@@ -146,6 +235,8 @@ TEE_Result qcom_clock_enable(enum qcom_clk_group group)
 	case QCOM_CLKS_WPSS:
 	case QCOM_CLKS_GPDSP0:
 	case QCOM_CLKS_GPDSP1:
+	case QCOM_CLKS_LMCU0:
+	case QCOM_CLKS_LMCU1:
 		return qcom_clock_enable_pas(group);
 	default:
 		EMSG("Unsupported clock group %d", group);
