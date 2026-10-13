@@ -4,7 +4,6 @@
  */
 
 #include <io.h>
-#include <mm/core_mmu.h>
 #include <platform_config.h>
 #include <pta_qcom_pas.h>
 #include <resource_table.h>
