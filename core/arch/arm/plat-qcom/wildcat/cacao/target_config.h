@@ -23,6 +23,8 @@
 
 #define GENI_UART_REG_BASE		UL(0xa94000)
 
+#define TLMM_BASE			UL(0x0f000000)
+#define TLMM_BASE_SIZE		        UL(0x01000000)
 #define GCC_BASE                 UL(0x100000)
 #define GCC_SIZE                 UL(0x1f0000)
 
