@@ -6,13 +6,13 @@
 #ifndef TARGET_CONFIG_H
 #define TARGET_CONFIG_H
 
-#define TCSR_BOOT_MISC_DETECT		UL(0x1FD3000)
+#define TCSR_BOOT_MISC_DETECT	UL(0x1FD3000)
 
-#define IMEM_BASE			UL(0x14680000)
-#define IMEM_SIZE			UL(0x19000)
+#define IMEM_BASE				UL(0x14680000)
+#define IMEM_SIZE				UL(0x19000)
 
-#define GICD_BASE			UL(0x17200000)
-#define GICR_BASE			UL(0x17260000)
+#define GICD_BASE				UL(0x17200000)
+#define GICR_BASE				UL(0x17260000)
 
 
 #define AOP_CMD_DB_BASE                 UL(0x80EB4000)
@@ -38,14 +38,14 @@
 #define AOP_MSG_RAM_BASE         UL(0x0C300000)
 #define AOP_MSG_RAM_SIZE         UL(0x00100000)
 
-#define AOSS_BASE                UL(0x0b000000)
-#define AOSS_SIZE                UL(0x04000000)
+#define AOSS_BASE				UL(0x0b000000)
+#define AOSS_SIZE				UL(0x04000000)
 
-#define TCSR_BASE                UL(0x01f00000)
-#define TCSR_SIZE                UL(0x00100000)
+#define TCSR_BASE				UL(0x01f00000)
+#define TCSR_SIZE				UL(0x00100000)
 
-#define LPASS_BASE               UL(0x33000000)
-#define LPASS_SIZE               UL(0x03c00000)
+#define LPASS_BASE				UL(0x33000000)
+#define LPASS_SIZE				UL(0x03c00000)
 
 #define TLMM_BASE					UL(0x0f000000)
 #define TLMM_BASE_SIZE				UL(0x01000000)
