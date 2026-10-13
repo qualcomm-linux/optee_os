@@ -11,4 +11,6 @@
 
 #define GENI_UART_REG_BASE		UL(0x04a80000)
 
+#define QCOM_RNG_REG_BASE		UL(0x04451000)
+
 #endif /* TARGET_CONFIG_H */
