@@ -9,6 +9,7 @@
 #include <util.h>
 
 #include "camera.h"
+#include "cvp.h"
 #include "iris.h"
 #include "hpass.h"
 #include "nspss.h"
@@ -26,12 +27,21 @@ static struct qcom_pas_subsys subsystems[] = {
 	},
 	{
 		.data = {
+			.pas_id = PAS_ID_CVP,
+			.base.pa = CVP_BASE,
+			.size = CVP_SIZE,
+		},
+		.ops = &cvp_ops,
+		.reset_seq = QCOM_PAS_RESET_NONE,
+	},
+	{
+		.data = {
 			.pas_id = DTB_ID_TURING,
 			.clk_group = QCOM_CLKS_TURING,
 		},
 		.ops = &nspss0_dtb_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
-	},	
+	},
 	{
 		.data = {
 			.pas_id = PAS_ID_TURING,
