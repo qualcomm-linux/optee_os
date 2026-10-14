@@ -18,15 +18,20 @@
 
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, TCSR_SOC_HW_VERSION_ADDR,
 			CORE_MMU_PGDIR_SIZE);
+#ifndef CFG_QCOM_FUSE_BLOW
+register_phys_mem_pgdir(MEM_AREA_IO_SEC, SECURITY_CONTROL_BASE,
+		CORE_MMU_PGDIR_SIZE);
+#endif
 
 static TEE_Result read_sense_reg(uint32_t offset, uint32_t *out)
 {
-	struct qfprom_context *drv = qfprom_get_context();
+	vaddr_t va = (vaddr_t)phys_to_virt(SECURITY_CONTROL_BASE + offset,
+					   MEM_AREA_IO_SEC, sizeof(uint32_t));
 
-	if (!drv->raw_base_va)
+	if (!va)
 		return TEE_ERROR_BAD_STATE;
 
-	*out = io_read32(drv->raw_base_va + offset);
+	*out = io_read32(va);
 
 	return TEE_SUCCESS;
 }
@@ -65,9 +70,42 @@ TEE_Result qcom_secboot_is_use_serial_num_enabled(bool *enabled)
 	return TEE_SUCCESS;
 }
 
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_OFFSET
+static TEE_Result read_root_hash_from_sense(uint8_t *hash, size_t len)
+{
+	size_t bit_pos = 0;
+	size_t reg = 0;
+
+	memset(hash, 0, len);
+
+	for (reg = 0; reg < QFPROM_ROOT_OF_TRUST_SENSE_REG_COUNT; reg++) {
+		uint32_t value = 0;
+		uint32_t width = (reg % 2) ? 24 : 32;
+		uint32_t bit = 0;
+		TEE_Result res = TEE_ERROR_GENERIC;
+
+		res = read_sense_reg(QFPROM_ROOT_OF_TRUST_SENSE_OFFSET + reg * 4,
+				     &value);
+		if (res)
+			return res;
+
+		value &= (width == 24) ? 0x00ffffff : UINT32_MAX;
+		for (bit = 0; bit < width && bit_pos < len * 8;
+		     bit++, bit_pos++) {
+			if (value & BIT32(bit))
+				hash[bit_pos / 8] |= U(1) << (bit_pos % 8);
+		}
+	}
+
+	return bit_pos == len * 8 ? TEE_SUCCESS : TEE_ERROR_BAD_FORMAT;
+}
+#endif
+
 TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len)
 {
-	size_t off = 0;
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_OFFSET
+	TEE_Result res = TEE_ERROR_GENERIC;
+#endif
 
 	if (!hash)
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -75,16 +113,22 @@ TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len)
 	if (len != QFPROM_ROOT_OF_TRUST_BYTE_SIZE)
 		return TEE_ERROR_BAD_PARAMETERS;
 
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_OFFSET
+	res = read_root_hash_from_sense(hash, len);
+	if (res)
+		return res;
+#else
 	for (off = 0; off < len; off += sizeof(uint32_t)) {
 		TEE_Result res = TEE_ERROR_GENERIC;
 		uint32_t word = 0;
 
-		res = read_sense_reg(PK_HASH0_OFFSET + off, &word);
+		res = read_sense_word(PK_HASH0_OFFSET + off, UINT32_MAX, &word);
 		if (res)
 			return res;
 
-		memcpy(hash + off, &word, sizeof(word));
+		memcpy(hash + off, &word, MIN(sizeof(word), len - off));
 	}
+#endif
 
 	return TEE_SUCCESS;
 }
@@ -106,7 +150,7 @@ TEE_Result qcom_secboot_get_device_ids(struct qcom_secboot_device_ids *ids)
 	res = read_sense_reg(JTAG_ID_OFFSET, &val);
 	if (res)
 		return res;
-	ids->jtag_id = val & JTAG_ID_AUTH_BMSK;
+	ids->jtag_id = (val & JTAG_ID_AUTH_BMSK) >> JTAG_ID_AUTH_SHFT;
 
 	res = read_sense_reg(SERIAL_NUM_OFFSET, &ids->serial_num);
 	if (res)
@@ -130,7 +174,8 @@ TEE_Result qcom_secboot_get_segment_hash_len(uint32_t root_cert_sel,
 	if (root_cert_sel > SEGMENT_HASH_ROOT_CERT_SEL_MAX)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	if (IS_ENABLED(CFG_QCOM_SEGMENT_HASH_SELECT)) {
+#if CFG_QCOM_SEGMENT_HASH_SELECT
+	{
 		TEE_Result res = TEE_ERROR_GENERIC;
 		uint32_t val = 0;
 
@@ -143,9 +188,10 @@ TEE_Result qcom_secboot_get_segment_hash_len(uint32_t root_cert_sel,
 			*hash_len = TEE_SHA256_HASH_SIZE;
 		else
 			*hash_len = TEE_SHA384_HASH_SIZE;
-	} else {
-		*hash_len = TEE_SHA384_HASH_SIZE;
 	}
+#else
+	*hash_len = TEE_SHA384_HASH_SIZE;
+#endif
 
 	return TEE_SUCCESS;
 }
@@ -169,23 +215,22 @@ TEE_Result qcom_secboot_get_eku_enforcement_en(bool *enabled)
 
 TEE_Result qcom_secboot_get_soc_hw_version(uint32_t *fam_dev)
 {
-	static vaddr_t soc_hw_version_addr;
-	uint32_t val = 0;
+	vaddr_t va = 0;
 
 	if (!fam_dev)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	if (!soc_hw_version_addr) {
-		soc_hw_version_addr =
-			(vaddr_t)phys_to_virt(TCSR_SOC_HW_VERSION_ADDR,
-					      MEM_AREA_IO_SEC,
-					      sizeof(uint32_t));
-		if (!soc_hw_version_addr)
+	va = (vaddr_t)phys_to_virt(TCSR_SOC_HW_VERSION_ADDR, MEM_AREA_IO_SEC,
+				   sizeof(uint32_t));
+	if (!va) {
+		va = (vaddr_t)core_mmu_add_mapping(MEM_AREA_IO_SEC,
+						   TCSR_SOC_HW_VERSION_ADDR,
+						   sizeof(uint32_t));
+		if (!va)
 			return TEE_ERROR_GENERIC;
 	}
 
-	val = io_read32(soc_hw_version_addr);
-	*fam_dev = (val & SOC_HW_VERSION_FAM_DEV_BMSK) >>
+	*fam_dev = (io_read32(va) & SOC_HW_VERSION_FAM_DEV_BMSK) >>
 		   SOC_HW_VERSION_FAM_DEV_SHFT;
 
 	return TEE_SUCCESS;
