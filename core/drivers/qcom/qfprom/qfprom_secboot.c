@@ -17,6 +17,10 @@
 
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, TCSR_SOC_HW_VERSION_ADDR,
 			CORE_MMU_PGDIR_SIZE);
+#ifndef CFG_QCOM_FUSE_BLOW
+register_phys_mem_pgdir(MEM_AREA_IO_SEC, SECURITY_CONTROL_BASE,
+		CORE_MMU_PGDIR_SIZE);
+#endif
 
 TEE_Result qcom_secboot_is_enabled(bool *enabled)
 {
@@ -52,7 +56,6 @@ TEE_Result qcom_secboot_is_use_serial_num_enabled(bool *enabled)
 	return TEE_SUCCESS;
 }
 
-/* Reads a corrected QFPROM word bypassing the region/permission table. */
 static TEE_Result read_sense_reg(paddr_t pa, uint32_t *out);
 
 #ifndef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
@@ -70,15 +73,45 @@ static TEE_Result read_corr_word(paddr_t pa, uint32_t mask, uint32_t *out)
 }
 #endif
 
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
+static TEE_Result read_root_hash_from_sense(uint8_t *hash, size_t len)
+{
+	size_t bit_pos = 0;
+	size_t reg = 0;
+
+	memset(hash, 0, len);
+
+	for (reg = 0; reg < QFPROM_ROOT_OF_TRUST_SENSE_REG_COUNT; reg++) {
+		uint32_t value = 0;
+		uint32_t width = (reg % 2) ? 24 : 32;
+		uint32_t bit = 0;
+		TEE_Result res = TEE_ERROR_GENERIC;
+
+		res = read_sense_reg(QFPROM_ROOT_OF_TRUST_SENSE_ADDR + reg * 4,
+				     &value);
+		if (res)
+			return res;
+
+		value &= (width == 24) ? 0x00ffffff : UINT32_MAX;
+		for (bit = 0; bit < width && bit_pos < len * 8;
+		     bit++, bit_pos++) {
+			if (value & BIT32(bit))
+				hash[bit_pos / 8] |= U(1) << (bit_pos % 8);
+		}
+	}
+
+	return bit_pos == len * 8 ? TEE_SUCCESS : TEE_ERROR_BAD_FORMAT;
+}
+#endif
+
 TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len)
 {
-	uint32_t word = 0;
-
-#ifndef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
-	/* Nord exposes the root hash through the fuse-controller sense block. */
-	paddr_t corr_base = QFPROM_RAW_TO_CORR(PK_HASH_0_ADDR);
-#endif
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
+	TEE_Result res = TEE_ERROR_GENERIC;
+#else
+	paddr_t corr_base = 0;
 	size_t off = 0;
+#endif
 
 	if (!hash)
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -86,20 +119,24 @@ TEE_Result qcom_secboot_get_root_of_trust(uint8_t *hash, size_t len)
 	if (len != QFPROM_ROOT_OF_TRUST_BYTE_SIZE)
 		return TEE_ERROR_BAD_PARAMETERS;
 
+#ifdef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
+	res = read_root_hash_from_sense(hash, len);
+	if (res)
+		return res;
+#else
+	corr_base = QFPROM_RAW_TO_CORR(PK_HASH_0_ADDR);
+
 	for (off = 0; off < len; off += sizeof(uint32_t)) {
 		TEE_Result res = TEE_ERROR_GENERIC;
+		uint32_t word = 0;
 
-#ifdef QFPROM_ROOT_OF_TRUST_SENSE_ADDR
-		res = read_sense_reg(QFPROM_ROOT_OF_TRUST_SENSE_ADDR + off,
-				     &word);
-#else
 		res = read_corr_word(corr_base + off, UINT32_MAX, &word);
-#endif
 		if (res)
 			return res;
 
 		memcpy(hash + off, &word, MIN(sizeof(word), len - off));
 	}
+#endif
 
 	return TEE_SUCCESS;
 }
