@@ -1,1 +1,4 @@
-# Placeholder for target specific configs.
+CFG_DRIVERS_CLK ?= y
+CFG_DRIVERS_QCOM_CLK ?= y
+
+CFG_QCOM_PAS_PTA ?= y
