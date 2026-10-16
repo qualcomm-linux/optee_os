@@ -45,4 +45,8 @@
 #define LPASS_BASE               UL(0x33000000)
 #define LPASS_SIZE               UL(0x03c00000)
 
+/* SMEM base address */
+#define SMEM_BASE               0x81416000
+#define SMEM_SIZE               0x00200000
+
 #endif /* TARGET_CONFIG_H */
