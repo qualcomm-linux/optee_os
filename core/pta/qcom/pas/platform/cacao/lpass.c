@@ -4,8 +4,6 @@
  */
 
 #include <io.h>
-#include <mm/core_memprot.h>
-#include <mm/core_mmu.h>
 #include <platform_config.h>
 #include <resource_table.h>
 #include <stdint.h>
@@ -34,7 +32,7 @@ static TEE_Result lpass_fw_start(struct qcom_pas_data *data)
 	if (!base)
 		return TEE_ERROR_GENERIC;
 
-	io_write32(base + LPASS_QDSP6SS_RST_EVB, data->fw_base >> 8);
+	io_write32(base + LPASS_QDSP6SS_RST_EVB, data->fw_base >> 4);
 	io_write32(base + LPASS_LPASS_EFUSE_Q6SS_EVB_SEL, 0);
 	dsb();
 

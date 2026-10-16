@@ -10,4 +10,4 @@
 
 extern const struct qcom_pas_ops lpass_ops;
 
-#endif
+#endif /* _LPASS_H_ */
