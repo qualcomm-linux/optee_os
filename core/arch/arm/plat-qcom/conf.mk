@@ -29,6 +29,11 @@ CFG_QCOM_GENI_UART_RDY_WAIT_USEC ?= 1000
 # Platform-specific configs may override this value.
 CFG_PAS_MD_SLOTS ?= 1
 
+# PIL PAS anti-rollback (ARB): enforce the image version in the signed
+# metadata against the version tracked by TME and ask TME to commit newer
+# versions. Needs a TME transport providing tmecom_transceive().
+CFG_QCOM_PAS_ARB ?= n
+
 ta-targets = ta_arm64
 supported-ta-targets ?= ta_arm64
 
@@ -53,3 +58,9 @@ endif
 # Include arch/target specific configurations if present
 -include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/qcom-arch.mk
 -include core/arch/arm/plat-qcom/$(QCOM_ARCH_FAMILY)/$(PLATFORM_FLAVOR)/target.mk
+
+ifeq ($(CFG_QCOM_PAS_ARB),y)
+ifneq ($(CFG_QCOM_PAS_AUTH),y)
+$(error CFG_QCOM_PAS_ARB=y requires CFG_QCOM_PAS_AUTH=y)
+endif
+endif
