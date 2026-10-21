@@ -5,27 +5,31 @@
 
 #include <io.h>
 #include <stdint.h>
+#include <kernel/delay.h>
+#include <trace.h>
 
 #include "iris.h"
 
-#define WRAPPER_TZ_XTSS_SW_RESET	0x1000
+#define IRIS_CLK_SETTLE_US		1U
+
+#define WRAPPER_TZ_XTSS_SW_RESET	(IRIS_WRAPPER_TZ_REG_BASE + 0x1000)
 #define WRAPPER_XTSS_SW_RESET_BIT	BIT(0)
 
-#define WRAPPER_TZ_SEC_0_SID		0x10c0
-#define WRAPPER_TZ_SEC_1_SID		0x10c4
-#define WRAPPER_TZ_SEC_2_SID		0x10c8
-#define WRAPPER_TZ_SEC_DEFAULT_SID	0x10cc
+#define WRAPPER_TZ_SEC_0_SID		(IRIS_WRAPPER_TZ_REG_BASE + 0x10c0)
+#define WRAPPER_TZ_SEC_1_SID		(IRIS_WRAPPER_TZ_REG_BASE + 0x10c4)
+#define WRAPPER_TZ_SEC_2_SID		(IRIS_WRAPPER_TZ_REG_BASE + 0x10c8)
+#define WRAPPER_TZ_SEC_DEFAULT_SID	(IRIS_WRAPPER_TZ_REG_BASE + 0x10cc)
 
-#define WRAPPER_TZ_SEC_0_START_ADDR	0x1040
-#define WRAPPER_TZ_SEC_0_END_ADDR	0x1044
-#define WRAPPER_TZ_SEC_1_START_ADDR	0x1048
-#define WRAPPER_TZ_SEC_1_END_ADDR	0x104c
-#define WRAPPER_TZ_SEC_5_START_ADDR	0x1068
-#define WRAPPER_TZ_SEC_5_END_ADDR	0x106c
+#define WRAPPER_TZ_SEC_0_START_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x1040)
+#define WRAPPER_TZ_SEC_0_END_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x1044)
+#define WRAPPER_TZ_SEC_1_START_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x1048)
+#define WRAPPER_TZ_SEC_1_END_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x104c)
+#define WRAPPER_TZ_SEC_5_START_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x1068)
+#define WRAPPER_TZ_SEC_5_END_ADDR	(IRIS_WRAPPER_TZ_REG_BASE + 0x106c)
 
-#define WRAPPER_SEC_CSR1		0x1084
+#define WRAPPER_SEC_CSR1		(IRIS_WRAPPER_TOP_REG_BASE + 0x1084)
 #define WRAPPER_SEC_CSR1_TUNNEL_BIT	BIT(0)
-#define WRAPPER_SEC_CSR7		0x109c
+#define WRAPPER_SEC_CSR7		(IRIS_WRAPPER_TOP_REG_BASE + 0x109c)
 
 #define CORE_TZ_OFFSET			0x1000
 #define NUM_CORES			2
@@ -86,10 +90,10 @@ static const uint32_t vpp_sid_table[CORE_TZ_SID_NUM_PARTITIONS]
 	{ 0x3b9ce7de, 0x000ce7bd },
 };
 
-#define SECURE_NP_START		0x01000000
-#define SECURE_NP_SIZE		0x24800000
-#define NONSECURE_NP_START	0x25800000
-#define NONSECURE_NP_SIZE	0xda600000
+#define SECURE_NP_START		U(0x01000000)
+#define SECURE_NP_SIZE		U(0x24800000)
+#define NONSECURE_NP_START	U(0x25800000)
+#define NONSECURE_NP_SIZE	U(0xda600000)
 
 static void iris_program_core_thresholds(vaddr_t core_base)
 {
@@ -130,8 +134,6 @@ static void iris_program_core_sid_tables(vaddr_t core_base)
 
 static void iris_program_sec_sid_registers(vaddr_t iris_base)
 {
-	vaddr_t top_base = iris_base + IRIS_WRAPPER_TOP_REG_BASE;
-	vaddr_t tz_base = iris_base + IRIS_WRAPPER_TZ_REG_BASE;
 	vaddr_t core0_base = iris_base + IRIS_CORE0_TZ_REG_BASE;
 	unsigned int core = 0;
 
@@ -143,43 +145,37 @@ static void iris_program_sec_sid_registers(vaddr_t iris_base)
 		io_write32(iris_base + SCIBCMDARG3_OFFSET, 0xbeef0001);
 	}
 
-	io_write32(tz_base + WRAPPER_TZ_SEC_0_SID, 0x0198a422);
-	io_write32(tz_base + WRAPPER_TZ_SEC_1_SID, 0x00006208);
-	io_write32(tz_base + WRAPPER_TZ_SEC_2_SID, 0x00000000);
-	io_write32(tz_base + WRAPPER_TZ_SEC_DEFAULT_SID, 0x00000000);
+	io_write32(iris_base + WRAPPER_TZ_SEC_0_SID, 0x0198a422);
+	io_write32(iris_base + WRAPPER_TZ_SEC_1_SID, 0x00006208);
+	io_write32(iris_base + WRAPPER_TZ_SEC_2_SID, 0x00000000);
+	io_write32(iris_base + WRAPPER_TZ_SEC_DEFAULT_SID, 0x00000000);
 
-	io_write32(top_base + WRAPPER_SEC_CSR1, WRAPPER_SEC_CSR1_TUNNEL_BIT);
-	io_write32(top_base + WRAPPER_SEC_CSR7, 0x1);
+	io_write32(iris_base + WRAPPER_SEC_CSR1, WRAPPER_SEC_CSR1_TUNNEL_BIT);
+	io_write32(iris_base + WRAPPER_SEC_CSR7, 0x1);
 }
 
-static void iris_program_mem_regions(vaddr_t tz_base, paddr_t fw_base,
-				     size_t fw_size)
+static void iris_program_mem_regions(vaddr_t iris_base,
+				     const struct qcom_pas_data *data)
 {
-	io_write32(tz_base + WRAPPER_TZ_SEC_0_START_ADDR, (uint32_t)fw_base);
-	io_write32(tz_base + WRAPPER_TZ_SEC_0_END_ADDR,
-		   (uint32_t)(fw_base + fw_size));
+	io_write32(iris_base + WRAPPER_TZ_SEC_0_START_ADDR, 0x0);
+	io_write32(iris_base + WRAPPER_TZ_SEC_0_END_ADDR, data->fw_size);
 
-	io_write32(tz_base + WRAPPER_TZ_SEC_1_START_ADDR,
-		   (uint32_t)SECURE_NP_START);
-	io_write32(tz_base + WRAPPER_TZ_SEC_1_END_ADDR,
-		   (uint32_t)(SECURE_NP_START + SECURE_NP_SIZE));
+	io_write32(iris_base + WRAPPER_TZ_SEC_1_START_ADDR, SECURE_NP_START);
+	io_write32(iris_base + WRAPPER_TZ_SEC_1_END_ADDR,
+		   SECURE_NP_START + SECURE_NP_SIZE);
 
-	io_write32(tz_base + WRAPPER_TZ_SEC_5_START_ADDR,
-		   (uint32_t)NONSECURE_NP_START);
-	io_write32(tz_base + WRAPPER_TZ_SEC_5_END_ADDR,
-		   (uint32_t)(NONSECURE_NP_START + NONSECURE_NP_SIZE));
+	io_write32(iris_base + WRAPPER_TZ_SEC_5_START_ADDR, NONSECURE_NP_START);
+	io_write32(iris_base + WRAPPER_TZ_SEC_5_END_ADDR,
+		   NONSECURE_NP_START + NONSECURE_NP_SIZE);
 }
 
 static TEE_Result iris_fw_start(struct qcom_pas_data *data)
 {
 	vaddr_t iris_base = 0;
-	vaddr_t tz_base = 0;
 
 	iris_base = io_pa_or_va(&data->base, data->size);
 	if (!iris_base)
 		return TEE_ERROR_GENERIC;
-
-	tz_base = iris_base + IRIS_WRAPPER_TZ_REG_BASE;
 
 	if (!data->fw_base) {
 		EMSG("iris: FW not loaded");
@@ -188,17 +184,17 @@ static TEE_Result iris_fw_start(struct qcom_pas_data *data)
 
 	udelay(IRIS_CLK_SETTLE_US);
 
-	if (!(io_read32(tz_base + WRAPPER_TZ_XTSS_SW_RESET) &
+	if (!(io_read32(iris_base + WRAPPER_TZ_XTSS_SW_RESET) &
 	      WRAPPER_XTSS_SW_RESET_BIT)) {
 		DMSG("iris: subsystem already running, skipping bring-up");
 		return TEE_SUCCESS;
 	}
 
-	iris_program_mem_regions(tz_base, data->fw_base, data->fw_size);
+	iris_program_mem_regions(iris_base, data);
 
 	iris_program_sec_sid_registers(iris_base);
 
-	io_write32(tz_base + WRAPPER_TZ_XTSS_SW_RESET, 0);
+	io_write32(iris_base + WRAPPER_TZ_XTSS_SW_RESET, 0);
 
 	return TEE_SUCCESS;
 }
@@ -206,23 +202,20 @@ static TEE_Result iris_fw_start(struct qcom_pas_data *data)
 static TEE_Result iris_fw_shutdown(struct qcom_pas_data *data)
 {
 	vaddr_t iris_base = 0;
-	vaddr_t tz_base = 0;
 	uint32_t reg = 0;
 
 	iris_base = io_pa_or_va(&data->base, data->size);
 	if (!iris_base)
 		return TEE_ERROR_GENERIC;
 
-	tz_base = iris_base + IRIS_WRAPPER_TZ_REG_BASE;
-
-	reg = io_read32(tz_base + WRAPPER_TZ_XTSS_SW_RESET);
+	reg = io_read32(iris_base + WRAPPER_TZ_XTSS_SW_RESET);
 	if (reg & WRAPPER_XTSS_SW_RESET_BIT) {
 		EMSG("iris: subsystem not running, skipping shutdown");
 		return TEE_SUCCESS;
 	}
 
 	reg |= WRAPPER_XTSS_SW_RESET_BIT;
-	io_write32(tz_base + WRAPPER_TZ_XTSS_SW_RESET, reg);
+	io_write32(iris_base + WRAPPER_TZ_XTSS_SW_RESET, reg);
 
 	return TEE_SUCCESS;
 }
