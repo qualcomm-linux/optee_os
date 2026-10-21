@@ -57,9 +57,14 @@ struct qfprom_platform_config {
 
 struct qfprom_context {
 	const struct qfprom_platform_config *config;
+	vaddr_t raw_base;
+	vaddr_t corr_base;
+	/* Compatibility aliases for HAL and SECBOOT register access. */
 	vaddr_t raw_base_va;
 	vaddr_t corr_base_va;
-	vaddr_t mutex_reg_va;
+	vaddr_t mutex_reg;
+	uint32_t clock_cfg;
+	bool clock_saved;
 	bool write_op_allowed;
 };
 
