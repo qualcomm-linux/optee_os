@@ -191,6 +191,22 @@ TEE_Result pas_meta_get_sw_id(const struct pas_mbn *mbn, uint32_t *sw_id)
 	return ops->get_sw_id(mbn, sw_id);
 }
 
+TEE_Result pas_meta_get_anti_rollback(const struct pas_mbn *mbn,
+				      uint32_t *anti_rollback)
+{
+	const struct pas_meta_ops *ops = NULL;
+	TEE_Result res = TEE_ERROR_GENERIC;
+
+	if (!anti_rollback)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	res = pas_meta_get_mbn_ops(mbn, &ops);
+	if (res)
+		return res;
+
+	return ops->get_anti_rollback(mbn, anti_rollback);
+}
+
 TEE_Result pas_meta_get_hw_id(const struct pas_mbn *mbn, uint32_t *hw_id)
 {
 	const struct pas_meta_ops *ops = NULL;

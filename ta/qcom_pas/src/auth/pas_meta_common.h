@@ -20,6 +20,8 @@ struct pas_meta_ops {
 	TEE_Result (*validate_version)(const struct pas_mbn *mbn);
 	TEE_Result (*validate_options)(const struct pas_mbn *mbn);
 	TEE_Result (*get_sw_id)(const struct pas_mbn *mbn, uint32_t *sw_id);
+	TEE_Result (*get_anti_rollback)(const struct pas_mbn *mbn,
+					uint32_t *anti_rollback);
 	TEE_Result (*get_hw_id)(const struct pas_mbn *mbn, uint32_t *hw_id);
 	TEE_Result (*get_oem_id)(const struct pas_mbn *mbn, uint32_t *oem_id);
 	TEE_Result (*get_model_id)(const struct pas_mbn *mbn,

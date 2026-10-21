@@ -192,6 +192,7 @@ static TEE_Result pas_meta_v6_validate_options(const struct pas_mbn *mbn)
 	}
 
 PAS_META_V6_GETTER(sw_id, sw_id)
+PAS_META_V6_GETTER(anti_rollback, anti_rollback)
 PAS_META_V6_GETTER(hw_id, hw_id)
 PAS_META_V6_GETTER(oem_id, oem_id)
 PAS_META_V6_GETTER(model_id, model_id)
@@ -350,6 +351,7 @@ const struct pas_meta_ops pas_meta_v6_ops = {
 	.validate_version = pas_meta_v6_validate_version,
 	.validate_options = pas_meta_v6_validate_options,
 	.get_sw_id = pas_meta_v6_get_sw_id,
+	.get_anti_rollback = pas_meta_v6_get_anti_rollback,
 	.get_hw_id = pas_meta_v6_get_hw_id,
 	.get_oem_id = pas_meta_v6_get_oem_id,
 	.get_model_id = pas_meta_v6_get_model_id,
