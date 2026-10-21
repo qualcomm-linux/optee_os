@@ -3,7 +3,9 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <config.h>
 #include <drivers/qcom/qfprom/qfprom.h>
+#include <drivers/qcom/tme_arb.h>
 #include <kernel/pseudo_ta.h>
 #include <kernel/ts_manager.h>
 #include <pta_qcom_fuse.h>
@@ -171,6 +173,41 @@ static TEE_Result get_use_serial_num(uint32_t param_types,
 	return TEE_SUCCESS;
 }
 
+static TEE_Result get_arb_version(uint32_t param_types,
+				  TEE_Param params[TEE_NUM_PARAMS])
+{
+	const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INOUT,
+						TEE_PARAM_TYPE_VALUE_OUTPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t version = 0;
+	bool valid = false;
+
+	if (param_types != exp_pt)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	res = tme_get_arb_oem_version(params[0].value.a, &version, &valid);
+	if (res)
+		return res;
+
+	params[0].value.b = valid ? version : 0;
+	params[1].value.a = valid;
+
+	return TEE_SUCCESS;
+}
+
+static TEE_Result update_rollback_version(uint32_t param_types)
+{
+	if (param_types != TEE_PARAM_TYPES(TEE_PARAM_TYPE_NONE,
+					   TEE_PARAM_TYPE_NONE,
+					   TEE_PARAM_TYPE_NONE,
+					   TEE_PARAM_TYPE_NONE))
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	return tme_update_rollback_version();
+}
+
 static TEE_Result invoke_command(void *sess_ctx __unused,
 				 uint32_t cmd_id,
 				 uint32_t param_types,
@@ -191,6 +228,14 @@ static TEE_Result invoke_command(void *sess_ctx __unused,
 		return get_eku_enforcement_en(param_types, params);
 	case PTA_QCOM_FUSE_GET_USE_SERIAL_NUM:
 		return get_use_serial_num(param_types, params);
+	case PTA_QCOM_FUSE_GET_ARB_VERSION:
+		if (!IS_ENABLED(CFG_QCOM_PAS_ARB))
+			return TEE_ERROR_NOT_SUPPORTED;
+		return get_arb_version(param_types, params);
+	case PTA_QCOM_FUSE_UPDATE_ROLLBACK_VERSION:
+		if (!IS_ENABLED(CFG_QCOM_PAS_ARB))
+			return TEE_ERROR_NOT_SUPPORTED;
+		return update_rollback_version(param_types);
 	default:
 		return TEE_ERROR_NOT_IMPLEMENTED;
 	}

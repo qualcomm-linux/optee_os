@@ -70,4 +70,24 @@
  */
 #define PTA_QCOM_FUSE_GET_USE_SERIAL_NUM	7
 
+/*
+ * Query the OEM anti-rollback (ARB) version tracked for an image.
+ * Requires CFG_QCOM_PAS_ARB.
+ *
+ * [in]  params[0].value.a:	SW_ID of the image
+ * [out] params[0].value.b:	current OEM ARB version
+ * [out] params[1].value.a:	1 if an OEM ARB version exists for the SW_ID,
+ *				0 otherwise (value.b is then meaningless)
+ */
+#define PTA_QCOM_FUSE_GET_ARB_VERSION		8
+
+/*
+ * Ask TME to commit the recorded image versions into the anti-rollback
+ * fuses. Requires CFG_QCOM_PAS_ARB. This blows one-time-programmable fuses
+ * and cannot be undone.
+ *
+ * No parameters.
+ */
+#define PTA_QCOM_FUSE_UPDATE_ROLLBACK_VERSION	9
+
 #endif /* __PTA_QCOM_FUSE_H */
