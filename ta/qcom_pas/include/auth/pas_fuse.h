@@ -60,4 +60,17 @@ TEE_Result pas_fuse_get_eku_enforcement_en(bool *eku_enforced);
 TEE_Result pas_fuse_get_segment_hash_len(uint32_t root_cert_sel,
 					 uint32_t *hash_len);
 
+/*
+ * Get the OEM anti-rollback version tracked for @sw_id. @valid is false if
+ * no ARB version applies to the image; @version is then 0.
+ */
+TEE_Result pas_fuse_get_arb_version(uint32_t sw_id, uint32_t *version,
+				    bool *valid);
+
+/*
+ * Ask TME to commit the recorded image versions into the anti-rollback
+ * fuses. Irreversible.
+ */
+TEE_Result pas_fuse_update_rollback_version(void);
+
 #endif /* __AUTH_PAS_FUSE_H */

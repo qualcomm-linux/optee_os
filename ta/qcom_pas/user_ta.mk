@@ -5,5 +5,6 @@ user-ta-skip := y
 endif
 
 CFG_QCOM_PAS_AUTH ?= n
+CFG_QCOM_PAS_ARB ?= n
 
 CFG_PAS_TA_HEAP_SIZE ?= (1024 * 1024)

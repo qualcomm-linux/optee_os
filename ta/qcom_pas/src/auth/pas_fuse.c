@@ -172,3 +172,43 @@ TEE_Result pas_fuse_get_segment_hash_len(uint32_t root_cert_sel,
 
 	return TEE_SUCCESS;
 }
+
+TEE_Result pas_fuse_get_arb_version(uint32_t sw_id, uint32_t *version,
+				    bool *valid)
+{
+	TEE_Param params[TEE_NUM_PARAMS] = { };
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t pt = 0;
+
+	params[0].value.a = sw_id;
+	pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INOUT,
+			     TEE_PARAM_TYPE_VALUE_OUTPUT, TEE_PARAM_TYPE_NONE,
+			     TEE_PARAM_TYPE_NONE);
+	res = fuse_pta_invoke(PTA_QCOM_FUSE_GET_ARB_VERSION, pt, params);
+	if (res) {
+		EMSG("PAS fuse: cannot read ARB version: %#"PRIx32, res);
+		return res;
+	}
+
+	*version = params[0].value.b;
+	*valid = params[1].value.a;
+
+	return TEE_SUCCESS;
+}
+
+TEE_Result pas_fuse_update_rollback_version(void)
+{
+	TEE_Param params[TEE_NUM_PARAMS] = { };
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t pt = 0;
+
+	pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE,
+			     TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE);
+	res = fuse_pta_invoke(PTA_QCOM_FUSE_UPDATE_ROLLBACK_VERSION, pt,
+			      params);
+	if (res)
+		EMSG("PAS fuse: rollback version update failed: %#"PRIx32,
+		     res);
+
+	return res;
+}

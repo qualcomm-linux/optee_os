@@ -316,6 +316,51 @@ TEE_Result pas_sig_auth_segment_hash_len(const struct pas_md_slot *slot,
 	return TEE_SUCCESS;
 }
 
+/*
+ * Enforce anti-rollback for the image: the version carried in the signed
+ * metadata must not be lower than the version tracked by TME for the image's
+ * software ID. A higher version is committed so older images are rejected from
+ * then on. No version tracked for the image means anti-rollback does not
+ * apply to it.
+ */
+static TEE_Result check_anti_rollback(const struct pas_mbn *hs)
+{
+	uint32_t device_version = 0;
+	uint32_t image_version = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	uint32_t sw_id = 0;
+	bool valid = false;
+
+	if (!IS_ENABLED(CFG_QCOM_PAS_ARB))
+		return TEE_SUCCESS;
+
+	res = pas_meta_get_sw_id(hs, &sw_id);
+	if (res)
+		return res;
+
+	res = pas_meta_get_anti_rollback(hs, &image_version);
+	if (res)
+		return res;
+
+	res = pas_fuse_get_arb_version(sw_id, &device_version, &valid);
+	if (res)
+		return res;
+
+	if (!valid)
+		return TEE_SUCCESS;
+
+	if (image_version < device_version) {
+		EMSG("PAS auth: image ARB version %"PRIu32" < device %"PRIu32,
+		     image_version, device_version);
+		return TEE_ERROR_SECURITY;
+	}
+
+	if (image_version == device_version)
+		return TEE_SUCCESS;
+
+	return pas_fuse_update_rollback_version();
+}
+
 TEE_Result pas_sig_auth_verify_image(const struct pas_mbn *hs,
 				     const uint8_t *meta_data,
 				     size_t meta_data_size,
@@ -345,5 +390,5 @@ TEE_Result pas_sig_auth_verify_image(const struct pas_mbn *hs,
 	if (res)
 		return res;
 
-	return TEE_SUCCESS;
+	return check_anti_rollback(hs);
 }
