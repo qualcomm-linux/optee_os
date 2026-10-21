@@ -12,15 +12,8 @@
 #include <string_ext.h>
 #include <trace.h>
 
-#include "ice_sw_keys.h"
-
-/*
- * Register the ICE (Inline Crypto Engine) LUT keys register region so this
- * PTA can program key slots.
- */
-register_phys_mem_pgdir(MEM_AREA_IO_SEC,
-			(ICE_LUT_KEYS & ~SMALL_PAGE_MASK),
-			ICE_LUT_KEYS_SIZE);
+#include "sw_keys/ice_sw_keys.h"
+#include "ice_config.h"
 
 /*
  * Virtual base of the ICE LUT-keys region, resolved once on first use.
@@ -122,21 +115,11 @@ static void ice_configure_slot(vaddr_t base, uint32_t index,
  * Command: tzbsp_es_invalidate_ice_key port.
  * [in] params[0].value.a  key slot index
  */
-TEE_Result sw_cmd_ice_invalidate_key(uint32_t param_types,
-				     TEE_Param params[TEE_NUM_PARAMS])
+TEE_Result sw_cmd_ice_invalidate_key(TEE_Param params[TEE_NUM_PARAMS])
 {
-	uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
-					  TEE_PARAM_TYPE_NONE,
-					  TEE_PARAM_TYPE_NONE,
-					  TEE_PARAM_TYPE_NONE);
 	uint32_t index;
 	vaddr_t base;
 	TEE_Result res;
-
-	if (param_types != exp_pt) {
-		EMSG("ICE invalidate: bad param types 0x%x", param_types);
-		return TEE_ERROR_BAD_PARAMETERS;
-	}
 
 	index = params[0].value.a;
 	if (index >= ICE_MAX_KEY_IDX) {
