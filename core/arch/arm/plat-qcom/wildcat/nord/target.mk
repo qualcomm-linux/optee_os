@@ -15,4 +15,6 @@ CFG_TA_RAM_VA_SIZE ?= 0x07B80000
 CFG_QCOM_RPMH_CLIENT ?= y
 ifeq ($(CFG_QCOM_RPMH_CLIENT),y)
 $(call force,CFG_QCOM_CMD_DB,y)
+
+$(call force,CFG_QCOM_CSRNG,y)
 endif
