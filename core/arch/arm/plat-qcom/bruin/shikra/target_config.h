@@ -16,4 +16,6 @@
 /* GIC-500 redistributor (GICD_BASE is common to the family). */
 #define GICR_BASE			UL(0x0f260000)
 
+#define QCOM_RNG_REG_BASE		UL(0x04451000)
+
 #endif /* TARGET_CONFIG_H */
