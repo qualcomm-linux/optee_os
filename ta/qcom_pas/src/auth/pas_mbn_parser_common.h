@@ -14,7 +14,8 @@
 struct pas_mbn_layout {
 	uint32_t version;
 	size_t header_size;
-	size_t qti_meta_size;
+	size_t common_meta_size;
+	size_t qc_meta_size;
 	size_t oem_meta_size;
 	size_t hash_table_size;
 	size_t qti_sig_size;
@@ -32,6 +33,7 @@ struct pas_mbn_ops {
 };
 
 extern const struct pas_mbn_ops pas_mbn_v6_ops;
+extern const struct pas_mbn_ops pas_mbn_v7_ops;
 
 /* Read a little-endian uint32_t from @p. */
 uint32_t pas_mbn_read_u32(const uint8_t *p);
