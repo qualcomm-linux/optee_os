@@ -14,11 +14,11 @@
 struct pas_mbn_layout {
 	uint32_t version;
 	size_t header_size;
-	size_t qti_meta_size;
+	size_t qc_meta_size;
 	size_t oem_meta_size;
 	size_t hash_table_size;
-	size_t qti_sig_size;
-	size_t qti_certs_size;
+	size_t qc_sig_size;
+	size_t qc_certs_size;
 	size_t oem_sig_size;
 	size_t oem_certs_size;
 };
@@ -39,7 +39,7 @@ uint32_t pas_mbn_read_u32(const uint8_t *p);
 /* Read a little-endian uint64_t from @p. */
 uint64_t pas_mbn_read_u64(const uint8_t *p);
 
-TEE_Result pas_mbn_locate(const uint8_t *md, size_t md_size,
+TEE_Result pas_mbn_locate(const uint8_t *metadata, size_t metadata_size,
 			  const uint8_t **seg, size_t *seg_size);
 
 TEE_Result pas_mbn_get_version(const uint8_t *segment, size_t segment_size,
@@ -55,8 +55,8 @@ TEE_Result pas_mbn_parse_layout(const uint8_t *segment, size_t segment_size,
 				struct pas_mbn *mbn);
 
 TEE_Result pas_mbn_copy_signed_data(const struct pas_mbn *mbn,
-				    size_t qti_sig_size_offset,
-				    size_t qti_certs_size_offset,
+				    size_t qc_sig_size_offset,
+				    size_t qc_certs_size_offset,
 				    uint8_t **data, size_t *data_len);
 
 #endif /* __PAS_MBN_PARSER_COMMON_H */

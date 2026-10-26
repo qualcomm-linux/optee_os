@@ -330,7 +330,7 @@ TEE_Result pas_sig_auth_verify_image(const struct pas_mbn *hs,
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
 
-	if (hs->qti_certs || hs->qti_sig) {
+	if (hs->qc_certs || hs->qc_sig) {
 		EMSG("PAS auth: QC-countersigned images are not supported");
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
