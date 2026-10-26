@@ -11,15 +11,15 @@
 struct pas_mbn_v6_header {
 	uint32_t reserved0;
 	uint32_t version;
-	uint32_t qti_signature_size;
-	uint32_t qti_cert_chain_size;
+	uint32_t qc_signature_size;
+	uint32_t qc_cert_chain_size;
 	uint32_t image_size;
 	uint32_t code_size;
 	uint32_t reserved1;
 	uint32_t oem_signature_size;
 	uint32_t reserved2;
 	uint32_t oem_cert_chain_size;
-	uint32_t qti_metadata_size;
+	uint32_t qc_metadata_size;
 	uint32_t oem_metadata_size;
 };
 
