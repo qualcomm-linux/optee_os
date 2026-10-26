@@ -32,15 +32,15 @@ static TEE_Result pas_mbn_v7_parse(const uint8_t *segment,
 	layout.common_meta_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, common_metadata_size));
 	layout.qc_meta_size = pas_mbn_read_u32(segment +
-		offsetof(struct pas_mbn_header_v7, qti_metadata_size));
+		offsetof(struct pas_mbn_header_v7, qc_metadata_size));
 	layout.oem_meta_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, oem_metadata_size));
 	layout.hash_table_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, code_size));
 	layout.qc_sig_size = pas_mbn_read_u32(segment +
-		offsetof(struct pas_mbn_header_v7, qti_signature_size));
+		offsetof(struct pas_mbn_header_v7, qc_signature_size));
 	layout.qc_certs_size = pas_mbn_read_u32(segment +
-		offsetof(struct pas_mbn_header_v7, qti_cert_chain_size));
+		offsetof(struct pas_mbn_header_v7, qc_cert_chain_size));
 	layout.oem_sig_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, oem_signature_size));
 	layout.oem_certs_size = pas_mbn_read_u32(segment +
@@ -55,9 +55,9 @@ static TEE_Result pas_mbn_v7_get_signed_data(const struct pas_mbn *mbn,
 					     size_t *data_len)
 {
 	return pas_mbn_copy_signed_data(mbn, offsetof(struct pas_mbn_header_v7,
-						      qti_signature_size),
+						      qc_signature_size),
 					offsetof(struct pas_mbn_header_v7,
-						 qti_cert_chain_size),
+						 qc_cert_chain_size),
 					data, data_len);
 }
 

@@ -113,15 +113,15 @@ static TEE_Result pas_meta_v7_get_root_cert_sel(const uint8_t *segment,
 						uint32_t *root_cert_sel)
 {
 	const uint8_t *common_metadata = NULL;
-	const uint8_t *qti_metadata = NULL;
+	const uint8_t *qc_metadata = NULL;
 	const uint8_t *metadata = NULL;
 	size_t common_metadata_size = 0;
-	size_t qti_metadata_size = 0;
+	size_t qc_metadata_size = 0;
 	size_t metadata_size = 0;
 	TEE_Result res = TEE_ERROR_GENERIC;
 	size_t offset = sizeof(struct pas_mbn_header_v7);
 	size_t common_size = 0;
-	size_t qti_size = 0;
+	size_t qc_size = 0;
 	size_t oem_size = 0;
 
 	if (!segment || !root_cert_sel)
@@ -132,8 +132,8 @@ static TEE_Result pas_meta_v7_get_root_cert_sel(const uint8_t *segment,
 
 	common_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, common_metadata_size));
-	qti_size = pas_mbn_read_u32(segment +
-		offsetof(struct pas_mbn_header_v7, qti_metadata_size));
+	qc_size = pas_mbn_read_u32(segment +
+		offsetof(struct pas_mbn_header_v7, qc_metadata_size));
 	oem_size = pas_mbn_read_u32(segment +
 		offsetof(struct pas_mbn_header_v7, oem_metadata_size));
 
@@ -143,8 +143,8 @@ static TEE_Result pas_meta_v7_get_root_cert_sel(const uint8_t *segment,
 	if (res)
 		return res;
 
-	res = pas_mbn_reserve_region(segment, segment_size, &offset, qti_size,
-				     &qti_metadata, &qti_metadata_size);
+	res = pas_mbn_reserve_region(segment, segment_size, &offset, qc_size,
+				     &qc_metadata, &qc_metadata_size);
 	if (res)
 		return res;
 
