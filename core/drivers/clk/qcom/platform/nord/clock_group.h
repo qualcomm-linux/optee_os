@@ -20,10 +20,18 @@
  * derives one address from another.
  */
 
-#ifndef _CLOCK_GROUP_QCOM_H_
-#define _CLOCK_GROUP_QCOM_H_
+#ifndef _NORD_CLOCK_GROUP_H_
+#define _NORD_CLOCK_GROUP_H_
 
+#include <mm/core_mmu.h>
 #include <platform_config.h>
+
+#define NORD_CLOCK_GROUP_REGISTER_GCC_PHYS_MEM() \
+	register_phys_mem(MEM_AREA_IO_SEC, GCC_BASE, GCC_SIZE)
+#define NORD_CLOCK_GROUP_REGISTER_SE_GCC_PHYS_MEM() \
+	register_phys_mem(MEM_AREA_IO_SEC, SE_GCC_BASE, SE_GCC_SIZE)
+#define NORD_CLOCK_GROUP_REGISTER_NE_GCC_PHYS_MEM() \
+	register_phys_mem(MEM_AREA_IO_SEC, NE_GCC_BASE, NE_GCC_SIZE)
 
 /*
  * SE_GCC (south-east quadrant): QUPv3 wrappers 0 and 1, seven SEs each.
@@ -53,6 +61,7 @@
 #define SE_GCC_QUPV3_WRAP1_S_AHB_CBCR		(SE_GCC_BASE + 0x17008)
 #define SE_GCC_QUPV3_WRAP1_CORE_CBCR		(SE_GCC_BASE + 0x1700c)
 #define SE_GCC_QUPV3_WRAP1_CORE_2X_CBCR		(SE_GCC_BASE + 0x17020)
+#define SE_GCC_QUPV3_WRAP1_CORE_2X_CMD_RCGR	(SE_GCC_BASE + 0x17030)
 #define SE_GCC_QUPV3_WRAP1_S0_CBCR		(SE_GCC_BASE + 0x1715c)
 #define SE_GCC_QUPV3_WRAP1_S0_CMD_RCGR		(SE_GCC_BASE + 0x1716c)
 #define SE_GCC_QUPV3_WRAP1_S1_CBCR		(SE_GCC_BASE + 0x17298)
@@ -217,6 +226,8 @@
 /* CMD_DFSR fields. */
 #define QCOM_RCG_CMD_DFSR_HW_CLK_CONTROL_FMSK	0x00000020
 #define QCOM_RCG_CMD_DFSR_DFS_EN_FMSK		0x00000001
+#define QCOM_RCG_CMD_DFSR_SW_PERF_STATE_FMSK	0x00007800
+#define QCOM_RCG_CMD_DFSR_SW_PERF_STATE_SHFT	11
 
 #ifdef CFG_QCOM_PAS_PTA
 
@@ -492,4 +503,4 @@
 
 #endif /* CFG_QCOM_PAS_PTA */
 
-#endif /* _CLOCK_GROUP_QCOM_H_ */
+#endif /* _NORD_CLOCK_GROUP_H_ */

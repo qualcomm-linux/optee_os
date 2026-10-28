@@ -13,7 +13,7 @@
 #include <string.h>
 #include <trace.h>
 
-#include "clock_group_qcom.h"
+#include "clock_group.h"
 #include "dtb_chip_id.h"
 #include "nspss.h"
 
