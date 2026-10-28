@@ -1,6 +1,7 @@
 CFG_DRIVERS_CLK ?= y
 CFG_DRIVERS_QCOM_CLK ?= y
 
+CFG_QCOM_FUSE_BLOW ?= n
 CFG_QCOM_PAS_PTA ?= y
 
 ifeq ($(CFG_QCOM_PAS_PTA),y)
@@ -12,10 +13,11 @@ endif
 
 ifeq ($(CFG_QCOM_PAS_AUTH),y)
 $(call force,CFG_QCOM_FUSE_PTA,y)
+$(call force,CFG_QCOM_QFPROM,y)
 CFG_PAS_MD_SLOTS = 8
 endif
 
-ifneq ($(filter y,$(CFG_QCOM_QFPROM_FUSEPROV) $(CFG_QCOM_FUSE_PTA)),)
+ifneq ($(filter y,$(CFG_QCOM_QFPROM_FUSEPROV) $(CFG_QCOM_FUSE_PTA) $(CFG_QCOM_FUSE_BLOW)),)
 $(call force,CFG_QCOM_QFPROM,y)
 endif
 
