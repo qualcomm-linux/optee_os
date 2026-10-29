@@ -15,7 +15,9 @@
 #define LMCU_NONCACHE_REMAP_STRIDE    0x8
 #define LMCU_NONCACHE_SID_STRIDE      0x4
 #define MAX_NONCACHE_REMAPPER         16
-#define MAX_CACHE_REMAPPER            1
+#define MAX_CACHE_REMAPPER            3
+#define MAX_CACHE_SID                 3
+#define LMCU_CACHE_SID_MASK           0xf
 
 static const uint32_t lmcu_noncache_remapper_values[] = {
 	0x00000001, 0x04000001, 0x08000001, 0x0c000001,
@@ -24,11 +26,18 @@ static const uint32_t lmcu_noncache_remapper_values[] = {
 	0x30000001, 0x34000001, 0x38000001, 0x3c000001,
 };
 
+static const uint32_t lmcu_cache_remapper_values[MAX_CACHE_REMAPPER] = {
+	0x80000001, 0x30000001, 0x80000001,
+};
+
 struct lmcu_regs {
 	uint32_t noncache_sid_remapper;
 	uint32_t cache_sid_remapper;
 	uint32_t noncache_sid;
 	uint32_t cache_sid;
+	uint32_t num_cache_remapper;
+	uint32_t num_cache_sid;
+	uint8_t cache_sid_val[MAX_CACHE_SID];
 	uint32_t tile0_reset_vector;
 	uint32_t spare_reg0;
 };
@@ -38,6 +47,9 @@ static const struct lmcu_regs lmcu0_regs = {
 	.cache_sid_remapper = 0x208d100,
 	.noncache_sid = 0x208d200,
 	.cache_sid = 0x208d300,
+	.num_cache_remapper = MAX_CACHE_REMAPPER,
+	.num_cache_sid = MAX_CACHE_SID,
+	.cache_sid_val = { 0, 0, 12 },
 	.tile0_reset_vector = 0x208c018,
 	.spare_reg0 = 0x2080100,
 };
@@ -47,6 +59,9 @@ static const struct lmcu_regs lmcu1_regs = {
 	.cache_sid_remapper = 0x248d100,
 	.noncache_sid = 0x248d200,
 	.cache_sid = 0x248d300,
+	.num_cache_remapper = MAX_CACHE_REMAPPER - 1,
+	.num_cache_sid = 2,
+	.cache_sid_val = { 0, 0 },
 	.tile0_reset_vector = 0x248c018,
 	.spare_reg0 = 0x2480100,
 };
@@ -139,13 +154,15 @@ static TEE_Result lmcu_fw_start(struct qcom_pas_data *data,
 	io_write32(base + regs->noncache_sid +
 			   MAX_NONCACHE_REMAPPER * LMCU_NONCACHE_SID_STRIDE, 1);
 
-	for (i = 0; i < MAX_CACHE_REMAPPER; i++)
+	for (i = 0; i < regs->num_cache_remapper; i++)
 		io_write32(base + regs->cache_sid_remapper +
-				   i * LMCU_NONCACHE_REMAP_STRIDE, 0x08000001);
+				   i * LMCU_NONCACHE_REMAP_STRIDE,
+				   lmcu_cache_remapper_values[i]);
 
-	io_clrbits32(base + regs->cache_sid, 0xf);
-	io_clrbits32(base + regs->cache_sid +
-		   MAX_CACHE_REMAPPER * LMCU_NONCACHE_SID_STRIDE, 0xf);
+	for (i = 0; i < regs->num_cache_sid; i++)
+		io_clrsetbits32(base + regs->cache_sid +
+				i * LMCU_NONCACHE_SID_STRIDE,
+				LMCU_CACHE_SID_MASK, regs->cache_sid_val[i]);
 
 	io_write32(base + regs->tile0_reset_vector, data->fw_base);
 	io_write32(base + regs->spare_reg0, dtb->fw_base);
