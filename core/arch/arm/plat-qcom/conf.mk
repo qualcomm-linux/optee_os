@@ -29,6 +29,10 @@ CFG_QCOM_GENI_UART_RDY_WAIT_USEC ?= 1000
 # Platform-specific configs may override this value.
 CFG_PAS_MD_SLOTS ?= 1
 
+# Maximum concurrent ICB micro-arbiter clients. Must be >= num_routes
+# in the target's u_data.c.
+CFG_QCOM_ICB_MAX_CLIENTS ?= 15
+
 ta-targets = ta_arm64
 supported-ta-targets ?= ta_arm64
 
