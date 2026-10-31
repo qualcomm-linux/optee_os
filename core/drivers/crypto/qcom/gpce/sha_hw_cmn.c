@@ -13,15 +13,16 @@
 #include <tee_api_types.h>
 #include <tee_api_defines.h>
 
-TEE_Result SHA_CMN_CE_update(hash_ctx_t *me, const uint8_t *msg,
+TEE_Result SHA_CMN_CE_update(struct hash_ctx_s *me, const uint8_t *msg,
 			     size_t msg_sz)
 {
-	ce_sha_ctx_t *c = NULL;
+	struct ce_sha_ctx_s *c = NULL;
 	TEE_Result ret = TEE_SUCCESS;
 
-	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t)))
+	if (HASH_IS_CTX_NULL(me) || !me->ctx ||
+	    me->ctx_sz != sizeof(struct ce_sha_ctx_s))
 		return TEE_ERROR_BAD_STATE;
-	c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
+	c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx_s);
 	ret = util_blk_buf_out(c->iblk_h, msg, msg_sz);
 	if (ret != TEE_SUCCESS)
 		return ret;
@@ -29,14 +30,15 @@ TEE_Result SHA_CMN_CE_update(hash_ctx_t *me, const uint8_t *msg,
 	return TEE_SUCCESS;
 }
 
-TEE_Result SHA_CMN_CE_final(hash_ctx_t *me, uint8_t *md, size_t md_sz)
+TEE_Result SHA_CMN_CE_final(struct hash_ctx_s *me, uint8_t *md, size_t md_sz)
 {
-	ce_sha_ctx_t *c = NULL;
+	struct ce_sha_ctx_s *c = NULL;
 	TEE_Result ret = TEE_SUCCESS;
 
-	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t)))
+	if (HASH_IS_CTX_NULL(me) || !me->ctx ||
+	    me->ctx_sz != sizeof(struct ce_sha_ctx_s))
 		return TEE_ERROR_BAD_STATE;
-	c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
+	c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx_s);
 	ret = util_blk_buf_out(c->iblk_h, NULL, 0);
 	if (ret != TEE_SUCCESS)
 		return ret;
@@ -50,11 +52,12 @@ TEE_Result SHA_CMN_CE_final(hash_ctx_t *me, uint8_t *md, size_t md_sz)
 	return TEE_SUCCESS;
 }
 
-TEE_Result SHA_CMN_CE_reset(hash_ctx_t *me)
+TEE_Result SHA_CMN_CE_reset(struct hash_ctx_s *me)
 {
-	if (hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t))) {
-		ce_sha_ctx_t *c =
-			HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
+	if (!HASH_IS_CTX_NULL(me) && me->ctx &&
+	    me->ctx_sz == sizeof(struct ce_sha_ctx_s)) {
+		struct ce_sha_ctx_s *c =
+			HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx_s);
 		TEE_Result ret = TEE_SUCCESS;
 
 		if (c->iblk_h) {
@@ -72,9 +75,9 @@ TEE_Result SHA_CMN_CE_reset(hash_ctx_t *me)
 	return TEE_SUCCESS;
 }
 
-TEE_Result SHA_CMN_CE_cleanup(hash_ctx_t *me)
+TEE_Result SHA_CMN_CE_cleanup(struct hash_ctx_s *me)
 {
-	ce_sha_ctx_t *c = NULL;
+	struct ce_sha_ctx_s *c = NULL;
 	TEE_Result ret = TEE_SUCCESS;
 
 	/*
@@ -83,10 +86,11 @@ TEE_Result SHA_CMN_CE_cleanup(hash_ctx_t *me)
 	 *
 	 * icb_unvote_ce_clock();
 	 */
-	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t)))
+	if (HASH_IS_CTX_NULL(me) || !me->ctx ||
+	    me->ctx_sz != sizeof(struct ce_sha_ctx_s))
 		return TEE_SUCCESS;
 
-	c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
+	c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx_s);
 	if (c->iblk_h) {
 		ret = util_blk_buf_free(c->iblk_h);
 		if (ret != TEE_SUCCESS)
@@ -97,14 +101,14 @@ TEE_Result SHA_CMN_CE_cleanup(hash_ctx_t *me)
 		if (ret != TEE_SUCCESS)
 			return ret;
 	}
-	memset(me->ctx, 0, sizeof(ce_sha_ctx_t));
+	memset(me->ctx, 0, sizeof(struct ce_sha_ctx_s));
 	free(me->ctx);
 	me->ctx_sz = 0;
 
 	return TEE_SUCCESS;
 }
 
-TEE_Result SHA_CMN_CE_init(hash_ctx_t *me)
+TEE_Result SHA_CMN_CE_init(struct hash_ctx_s *me)
 {
 	/*
 	 * TODO: Vote for the CE clock through ICB once OP-TEE provides an ICB
@@ -112,18 +116,18 @@ TEE_Result SHA_CMN_CE_init(hash_ctx_t *me)
 	 *
 	 * icb_vote_ce_clock();
 	 */
-	if (!hash_is_ctx_valid(me) || !me->dev)
+	if (HASH_IS_CTX_NULL(me) || !me->dev)
 		return TEE_ERROR_BAD_STATE;
 
 	return TEE_SUCCESS;
 }
 
-TEE_Result SHA_CMN_CE_copy(hash_ctx_t *dest, hash_ctx_t *src)
+TEE_Result SHA_CMN_CE_copy(struct hash_ctx_s *dest, struct hash_ctx_s *src)
 {
-	ce_sha_ctx_t *src_inner_ctx =
-		HASH_GET_DIGEST_CTX(src, ce_sha_ctx_t);
-	ce_sha_ctx_t *dest_inner_ctx =
-		HASH_GET_DIGEST_CTX(dest, ce_sha_ctx_t);
+	struct ce_sha_ctx_s *src_inner_ctx =
+		HASH_GET_DIGEST_CTX(src, struct ce_sha_ctx_s);
+	struct ce_sha_ctx_s *dest_inner_ctx =
+		HASH_GET_DIGEST_CTX(dest, struct ce_sha_ctx_s);
 	TEE_Result ret = TEE_SUCCESS;
 
 	dest_inner_ctx->iblk_h = NULL;

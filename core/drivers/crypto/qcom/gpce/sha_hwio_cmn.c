@@ -15,18 +15,19 @@ TEE_Result SHA_CMN_HWIO_process_din(void *ctx, const uint8_t *buf,
 				    size_t buf_sz, bool first,
 				    bool last)
 {
-	hash_ctx_t *me = (hash_ctx_t *)ctx;
+	struct hash_ctx_s *me = (struct hash_ctx_s *)ctx;
 	TEE_Result ret = TEE_ERROR_BAD_STATE;
 	size_t seg_sz = 0;
 
-	if (!hash_is_ctx_valid(me))
+	if (HASH_IS_CTX_NULL(me))
 		return TEE_ERROR_BAD_STATE;
 	if (!me->dev)
 		return TEE_ERROR_BAD_STATE;
 	mutex_lock(&me->dev->mutex);
 
 	/* Set CE Context */
-	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t)))
+	if (HASH_IS_CTX_NULL(me) || !me->ctx ||
+	    me->ctx_sz != sizeof(struct ce_sha_ctx_s))
 		goto out;
 
 	seg_sz = ROUNDUP(buf_sz, CE_HW_BLOCK_SIZE);

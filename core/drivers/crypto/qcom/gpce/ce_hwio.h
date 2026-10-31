@@ -18,10 +18,10 @@
 
 #include "hash.h"
 
-TEE_Result CE_HWIO_set_ce_ctx(hash_ctx_t *ctx, size_t auth_sz,
+TEE_Result CE_HWIO_set_ce_ctx(struct hash_ctx_s *ctx, size_t auth_sz,
 			      size_t seg_sz, bool first, bool last);
-TEE_Result CE_HWIO_get_ce_ctx(hash_ctx_t *ctx);
-TEE_Result CE_HWIO_xfer_data(hash_ctx_t *ctx, const uint8_t *ibuf,
+TEE_Result CE_HWIO_get_ce_ctx(struct hash_ctx_s *ctx);
+TEE_Result CE_HWIO_xfer_data(struct hash_ctx_s *ctx, const uint8_t *ibuf,
 			     size_t isz);
 
 #endif /* QCOM_GPCE_CE_HWIO_H */

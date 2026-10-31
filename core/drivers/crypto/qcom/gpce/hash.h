@@ -37,54 +37,36 @@
 #define INIT_DATA_CE_SHA1_h3	TEE_U32_TO_BIG_ENDIAN(SHA1_INITIAL_H3)
 #define INIT_DATA_CE_SHA1_h4	TEE_U32_TO_BIG_ENDIAN(SHA1_INITIAL_H4)
 
-#define HASH_CTX_MAGIC		UINT32_C(0x48415348)
-
-typedef struct hash_ctx_s hash_ctx_t;
-
-typedef struct qce_dev_s {
+struct qce_dev_s {
 	/* Serializes access to the Crypto Engine. */
 	struct mutex mutex;
 	vaddr_t base;
-} qce_dev_t;
+};
 
-typedef struct ce_sha_ctx_s {
+struct ce_sha_ctx_s {
 	struct Blk_buf_s *iblk_h;
 	struct ce_ctx *ce_ctx;
-} ce_sha_ctx_t;
+};
 
 struct hash_ctx_s {
-	uint32_t magic;
 	size_t md_sz;
 	uint32_t flags;
-	qce_dev_t *dev;
+	struct qce_dev_s *dev;
 	void *ctx;
 	size_t ctx_sz;
 };
 
 #define HASH_GET_DIGEST_CTX(hash, type) ((type *)((hash)->ctx))
-#define hash_is_ctx_valid(ctx) \
-	((ctx) && (ctx)->magic == HASH_CTX_MAGIC)
+#define HASH_IS_CTX_NULL(ctx) (!(ctx))
 
-static inline bool hash_dgst_ctx_valid(const hash_ctx_t *ctx,
-				       size_t size)
-{
-	return ctx && ctx->ctx && ctx->ctx_sz == size;
-}
-
-static inline bool hash_is_flag_set(const hash_ctx_t *ctx,
-				    uint32_t flag)
-{
-	return (ctx->flags & flag) == flag;
-}
-
-TEE_Result SHA1_CE_HWIO_init(hash_ctx_t *me);
-TEE_Result SHA_CMN_CE_init(hash_ctx_t *me);
-TEE_Result SHA_CMN_CE_update(hash_ctx_t *me, const uint8_t *msg,
+TEE_Result SHA1_CE_HWIO_init(struct hash_ctx_s *me);
+TEE_Result SHA_CMN_CE_init(struct hash_ctx_s *me);
+TEE_Result SHA_CMN_CE_update(struct hash_ctx_s *me, const uint8_t *msg,
 			     size_t msg_sz);
-TEE_Result SHA_CMN_CE_final(hash_ctx_t *me, uint8_t *md, size_t md_sz);
-TEE_Result SHA_CMN_CE_reset(hash_ctx_t *me);
-TEE_Result SHA_CMN_CE_cleanup(hash_ctx_t *me);
-TEE_Result SHA_CMN_CE_copy(hash_ctx_t *dst, hash_ctx_t *src);
+TEE_Result SHA_CMN_CE_final(struct hash_ctx_s *me, uint8_t *md, size_t md_sz);
+TEE_Result SHA_CMN_CE_reset(struct hash_ctx_s *me);
+TEE_Result SHA_CMN_CE_cleanup(struct hash_ctx_s *me);
+TEE_Result SHA_CMN_CE_copy(struct hash_ctx_s *dst, struct hash_ctx_s *src);
 TEE_Result SHA_CMN_HWIO_process_din(void *ctx, const uint8_t *buf,
 				    size_t buf_sz, bool first,
 				    bool last);

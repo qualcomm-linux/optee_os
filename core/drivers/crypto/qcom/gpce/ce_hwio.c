@@ -47,7 +47,7 @@
 #define CE_GOPROC_GO			BIT(0)
 #define CE_HWIO_BASE(dev)	((dev)->base)
 
-static void CE_HWIO_set_config(hash_ctx_t *ctx, bool little)
+static void CE_HWIO_set_config(struct hash_ctx_s *ctx, bool little)
 {
 	uint32_t cfg_msk = CE_CONFIG_HIGH_SPEED_DATA_EN_N |
 			   CE_CONFIG_MASK_OP_DONE_INTR |
@@ -59,7 +59,7 @@ static void CE_HWIO_set_config(hash_ctx_t *ctx, bool little)
 	io_write32(CE_HWIO_BASE(ctx->dev) + CE_REG_CONFIG, cfg_msk);
 }
 
-static TEE_Result ce_hwio_get_ce_state(hash_ctx_t *ctx)
+static TEE_Result ce_hwio_get_ce_state(struct hash_ctx_s *ctx)
 {
 	uint32_t ce_status = io_read32(CE_HWIO_BASE(ctx->dev) + CE_REG_STATUS);
 
@@ -73,24 +73,25 @@ static TEE_Result ce_hwio_get_ce_state(hash_ctx_t *ctx)
 	return TEE_SUCCESS;
 }
 
-TEE_Result CE_HWIO_set_ce_ctx(hash_ctx_t *ctx, size_t auth_sz,
+TEE_Result CE_HWIO_set_ce_ctx(struct hash_ctx_s *ctx, size_t auth_sz,
 			      size_t seg_sz, bool first, bool last)
 {
-	ce_sha_ctx_t *sha_ctx = NULL;
-	qce_dev_t *dev = NULL;
+	struct ce_sha_ctx_s *sha_ctx = NULL;
+	struct qce_dev_s *dev = NULL;
 	struct ce_ctx *me = NULL;
 	size_t max_auth_byte_cnt = MAX_AUTH_BYTE_COUNT;
 	size_t max_auth_iv_cnt = MAX_AUTH_IV_COUNT;
 	uint32_t cfg = CE_AUTH_CFG_SHA;
 	size_t i = 0;
 
-	if (!hash_is_ctx_valid(ctx) ||
-	    !hash_dgst_ctx_valid(ctx, sizeof(*sha_ctx)) || !ctx->dev)
+	if (HASH_IS_CTX_NULL(ctx) ||
+	    !ctx->ctx ||
+	    ctx->ctx_sz != sizeof(*sha_ctx) || !ctx->dev)
 		return TEE_ERROR_BAD_STATE;
-	sha_ctx = HASH_GET_DIGEST_CTX(ctx, ce_sha_ctx_t);
+	sha_ctx = HASH_GET_DIGEST_CTX(ctx, struct ce_sha_ctx_s);
 	dev = ctx->dev;
 	me = sha_ctx->ce_ctx;
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 
 	/* CE HW Config set up */
@@ -145,22 +146,23 @@ TEE_Result CE_HWIO_set_ce_ctx(hash_ctx_t *ctx, size_t auth_sz,
 	return TEE_SUCCESS;
 }
 
-TEE_Result CE_HWIO_get_ce_ctx(hash_ctx_t *ctx)
+TEE_Result CE_HWIO_get_ce_ctx(struct hash_ctx_s *ctx)
 {
-	ce_sha_ctx_t *sha_ctx = NULL;
-	qce_dev_t *dev = NULL;
+	struct ce_sha_ctx_s *sha_ctx = NULL;
+	struct qce_dev_s *dev = NULL;
 	struct ce_ctx *me = NULL;
 	size_t max_auth_byte_cnt = MAX_AUTH_BYTE_COUNT;
 	size_t max_auth_iv_cnt = MAX_AUTH_IV_COUNT;
 	size_t i = 0;
 
-	if (!hash_is_ctx_valid(ctx) ||
-	    !hash_dgst_ctx_valid(ctx, sizeof(*sha_ctx)) || !ctx->dev)
+	if (HASH_IS_CTX_NULL(ctx) ||
+	    !ctx->ctx ||
+	    ctx->ctx_sz != sizeof(*sha_ctx) || !ctx->dev)
 		return TEE_ERROR_BAD_STATE;
-	sha_ctx = HASH_GET_DIGEST_CTX(ctx, ce_sha_ctx_t);
+	sha_ctx = HASH_GET_DIGEST_CTX(ctx, struct ce_sha_ctx_s);
 	dev = ctx->dev;
 	me = sha_ctx->ce_ctx;
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 
 	/* Auth Engine Context if enabled */
@@ -194,22 +196,23 @@ TEE_Result CE_HWIO_get_ce_ctx(hash_ctx_t *ctx)
 	return ce_hwio_get_ce_state(ctx);
 }
 
-TEE_Result CE_HWIO_xfer_data(hash_ctx_t *ctx, const uint8_t *ibuf,
+TEE_Result CE_HWIO_xfer_data(struct hash_ctx_s *ctx, const uint8_t *ibuf,
 			     size_t isz)
 {
-	ce_sha_ctx_t *sha_ctx = NULL;
-	qce_dev_t *dev = NULL;
+	struct ce_sha_ctx_s *sha_ctx = NULL;
+	struct qce_dev_s *dev = NULL;
 	struct ce_ctx *me = NULL;
 	size_t iwcnt = 0;
 	bool is_ibuf_align = false;
 
-	if (!hash_is_ctx_valid(ctx) ||
-	    !hash_dgst_ctx_valid(ctx, sizeof(*sha_ctx)) || !ctx->dev)
+	if (HASH_IS_CTX_NULL(ctx) ||
+	    !ctx->ctx ||
+	    ctx->ctx_sz != sizeof(*sha_ctx) || !ctx->dev)
 		return TEE_ERROR_BAD_STATE;
-	sha_ctx = HASH_GET_DIGEST_CTX(ctx, ce_sha_ctx_t);
+	sha_ctx = HASH_GET_DIGEST_CTX(ctx, struct ce_sha_ctx_s);
 	dev = ctx->dev;
 	me = sha_ctx->ce_ctx;
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 	if (!ibuf && isz)
 		return TEE_ERROR_BAD_PARAMETERS;

@@ -14,7 +14,6 @@
 #include <tee_api_defines.h>
 #include <util.h>
 
-#define CE_HAL_MAGIC_NUMBER		UINT32_C(0x57484543)
 #define CE_HAL_FLAGS_IS_LITTLE_ENDIAN	UINT32_C(0x00000004)
 #define CE_HAL_FLAGS_IS_AUTH_ENG_EN	UINT32_C(0x00000100)
 
@@ -22,7 +21,6 @@
 #define MAX_AUTH_IV_COUNT	U(16)
 
 struct ce_ctx {
-	uint32_t magic_number;
 	uint32_t flags;
 	uint32_t auth_iv[MAX_AUTH_IV_COUNT];
 	uint32_t auth_byte_cnt[MAX_AUTH_BYTE_COUNT];
@@ -33,11 +31,6 @@ struct ce_ctx {
 static inline bool ce_hal_flag_set(const struct ce_ctx *ctx, uint32_t mask)
 {
 	return (ctx->flags & mask) == mask;
-}
-
-static inline bool ce_hal_is_ctx_valid(const struct ce_ctx *ctx)
-{
-	return ctx && ctx->magic_number == CE_HAL_MAGIC_NUMBER;
 }
 
 struct ce_ctx *CE_HAL_new(void);

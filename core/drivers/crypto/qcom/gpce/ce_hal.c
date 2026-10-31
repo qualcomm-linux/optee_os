@@ -16,15 +16,12 @@ struct ce_ctx *CE_HAL_new(void)
 {
 	struct ce_ctx *ctx = calloc(1, sizeof(*ctx));
 
-	if (ctx)
-		ctx->magic_number = CE_HAL_MAGIC_NUMBER;
-
 	return ctx;
 }
 
 TEE_Result CE_HAL_free(struct ce_ctx *me)
 {
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 	memset(me, 0, sizeof(*me));
 	free(me);
@@ -34,7 +31,7 @@ TEE_Result CE_HAL_free(struct ce_ctx *me)
 
 TEE_Result CE_HAL_reset(struct ce_ctx *me)
 {
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 	memset(me->auth_iv, 0, sizeof(me->auth_iv));
 	memset(me->auth_byte_cnt, 0, sizeof(me->auth_byte_cnt));
@@ -44,7 +41,7 @@ TEE_Result CE_HAL_reset(struct ce_ctx *me)
 
 TEE_Result CE_HAL_init(struct ce_ctx *me, bool little_endian)
 {
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 
 	if (little_endian)
@@ -56,7 +53,7 @@ TEE_Result CE_HAL_init(struct ce_ctx *me, bool little_endian)
 
 TEE_Result CE_HAL_set_auth_iv(struct ce_ctx *me, uint8_t idx, uint32_t iv)
 {
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 	if (idx >= ARRAY_SIZE(me->auth_iv))
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -67,7 +64,7 @@ TEE_Result CE_HAL_set_auth_iv(struct ce_ctx *me, uint8_t idx, uint32_t iv)
 
 TEE_Result CE_HAL_get_auth_iv(struct ce_ctx *me, uint8_t *buf, size_t sz)
 {
-	if (!ce_hal_is_ctx_valid(me))
+	if (!me)
 		return TEE_ERROR_BAD_STATE;
 	if (!buf || sz > sizeof(me->auth_iv))
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -78,7 +75,7 @@ TEE_Result CE_HAL_get_auth_iv(struct ce_ctx *me, uint8_t *buf, size_t sz)
 
 TEE_Result CE_HAL_copy(struct ce_ctx *dest, struct ce_ctx *src)
 {
-	if (!ce_hal_is_ctx_valid(src))
+	if (!src)
 		return TEE_ERROR_BAD_STATE;
 	if (!dest)
 		return TEE_ERROR_BAD_STATE;

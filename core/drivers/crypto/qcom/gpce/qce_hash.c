@@ -26,51 +26,28 @@
 
 struct qce_hash_ctx {
 	struct crypto_hash_ctx hash_ctx;
-	void *ctx_handle;
+	struct hash_ctx_s *state;
 	uint32_t tee_alg;
 };
 
 static const struct crypto_hash_ops qce_hash_ops;
-static qce_dev_t qce_dev = {
+static struct qce_dev_s qce_dev = {
 	.mutex = MUTEX_INITIALIZER,
 };
 
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, QCOM_GPCE_REG_BASE,
 			QCOM_GPCE_REG_SIZE);
 
-#define QCE_HANDLE_MASK_32	UINT32_C(0x3794A1FB)
-#define QCE_HANDLE_MASK_64	UINT64_C(0x38FD256ECA764B19)
-
-static uintptr_t qce_hash_handle_mask(void)
-{
-	return sizeof(uintptr_t) == sizeof(uint32_t) ? QCE_HANDLE_MASK_32 :
-		QCE_HANDLE_MASK_64;
-}
-
-static void *qce_hash_scramble_ctx(hash_ctx_t *ctx)
-{
-	return (void *)((uintptr_t)ctx ^ qce_hash_handle_mask());
-}
-
-static hash_ctx_t *qce_hash_get_ctx(struct qce_hash_ctx *ctx)
-{
-	if (!ctx || !ctx->ctx_handle)
-		return NULL;
-
-	return (hash_ctx_t *)((uintptr_t)ctx->ctx_handle ^
-			      qce_hash_handle_mask());
-}
-
 static void qce_hash_free_ctx(struct crypto_hash_ctx *ctx)
 {
 	struct qce_hash_ctx *qce_ctx = NULL;
-	hash_ctx_t *state = NULL;
+	struct hash_ctx_s *state = NULL;
 
 	if (!ctx || ctx->ops != &qce_hash_ops)
 		return;
 
 	qce_ctx = container_of(ctx, struct qce_hash_ctx, hash_ctx);
-	state = qce_hash_get_ctx(qce_ctx);
+	state = qce_ctx->state;
 	if (state && state->ctx)
 		(void)SHA_CMN_CE_cleanup(state);
 	if (state) {
@@ -85,64 +62,40 @@ static void qce_hash_free_ctx(struct crypto_hash_ctx *ctx)
 static TEE_Result qce_hash_init(struct crypto_hash_ctx *ctx)
 {
 	struct qce_hash_ctx *qce_ctx = NULL;
-	hash_ctx_t *state = NULL;
-	TEE_Result ret = TEE_SUCCESS;
 
 	if (!ctx || ctx->ops != &qce_hash_ops)
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	qce_ctx = container_of(ctx, struct qce_hash_ctx, hash_ctx);
-	state = qce_hash_get_ctx(qce_ctx);
-	if (!hash_is_ctx_valid(state))
-		return TEE_ERROR_BAD_STATE;
-
-	if (state->ctx) {
-		ret = SHA_CMN_CE_cleanup(state);
-		if (ret != TEE_SUCCESS)
-			return ret;
-	}
-
-	ret = SHA1_CE_HWIO_init(state);
-
-	return ret;
+	return SHA1_CE_HWIO_init(qce_ctx->state);
 }
 
 static TEE_Result qce_hash_update(struct crypto_hash_ctx *ctx,
 				  const uint8_t *data, size_t len)
 {
 	struct qce_hash_ctx *qce_ctx = NULL;
-	hash_ctx_t *state = NULL;
 
 	if (!ctx || ctx->ops != &qce_hash_ops || !data ||
 	    (uintptr_t)data > UINTPTR_MAX - len)
 		return TEE_ERROR_BAD_PARAMETERS;
 
 	qce_ctx = container_of(ctx, struct qce_hash_ctx, hash_ctx);
-	state = qce_hash_get_ctx(qce_ctx);
-	if (!hash_is_ctx_valid(state) || !state->ctx)
-		return TEE_ERROR_BAD_STATE;
-
-	return SHA_CMN_CE_update(state, data, len);
+	return SHA_CMN_CE_update(qce_ctx->state, data, len);
 }
 
 static TEE_Result qce_hash_final(struct crypto_hash_ctx *ctx,
 				 uint8_t *digest, size_t len)
 {
 	struct qce_hash_ctx *qce_ctx = NULL;
-	hash_ctx_t *state = NULL;
 
-	if (!ctx || ctx->ops != &qce_hash_ops || !digest || !len ||
+	if (!ctx || ctx->ops != &qce_hash_ops || !digest ||
 	    (uintptr_t)digest > UINTPTR_MAX - len)
 		return TEE_ERROR_BAD_PARAMETERS;
-
-	qce_ctx = container_of(ctx, struct qce_hash_ctx, hash_ctx);
-	state = qce_hash_get_ctx(qce_ctx);
-	if (!hash_is_ctx_valid(state) || !state->ctx)
-		return TEE_ERROR_BAD_STATE;
-	if (len < state->md_sz)
+	if (len < SHA1_DIGEST_SIZE)
 		return TEE_ERROR_SHORT_BUFFER;
 
-	return SHA_CMN_CE_final(state, digest, state->md_sz);
+	qce_ctx = container_of(ctx, struct qce_hash_ctx, hash_ctx);
+	return SHA_CMN_CE_final(qce_ctx->state, digest, SHA1_DIGEST_SIZE);
 }
 
 static void qce_hash_copy_state(struct crypto_hash_ctx *dst,
@@ -150,8 +103,8 @@ static void qce_hash_copy_state(struct crypto_hash_ctx *dst,
 {
 	struct qce_hash_ctx *dst_ctx = NULL;
 	struct qce_hash_ctx *src_ctx = NULL;
-	hash_ctx_t *dst_state = NULL;
-	hash_ctx_t *src_state = NULL;
+	struct hash_ctx_s *dst_state = NULL;
+	struct hash_ctx_s *src_state = NULL;
 	TEE_Result ret = TEE_ERROR_BAD_STATE;
 
 	if (!dst || !src || dst->ops != &qce_hash_ops ||
@@ -160,9 +113,10 @@ static void qce_hash_copy_state(struct crypto_hash_ctx *dst,
 
 	dst_ctx = container_of(dst, struct qce_hash_ctx, hash_ctx);
 	src_ctx = container_of(src, struct qce_hash_ctx, hash_ctx);
-	dst_state = qce_hash_get_ctx(dst_ctx);
-	src_state = qce_hash_get_ctx(src_ctx);
-	if (!hash_is_ctx_valid(dst_state) || !hash_is_ctx_valid(src_state) ||
+	dst_state = dst_ctx->state;
+	src_state = src_ctx->state;
+	if (HASH_IS_CTX_NULL(dst_state) ||
+	    HASH_IS_CTX_NULL(src_state) ||
 	    dst_ctx->tee_alg != src_ctx->tee_alg)
 		goto out;
 
@@ -202,7 +156,7 @@ static TEE_Result qce_hash_alloc_ctx(struct crypto_hash_ctx **ctx,
 				     uint32_t algo)
 {
 	struct qce_hash_ctx *qce_ctx = NULL;
-	hash_ctx_t *state = NULL;
+	struct hash_ctx_s *state = NULL;
 
 	if (!ctx)
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -221,9 +175,8 @@ static TEE_Result qce_hash_alloc_ctx(struct crypto_hash_ctx **ctx,
 		free(qce_ctx);
 		return TEE_ERROR_OUT_OF_MEMORY;
 	}
-	state->magic = HASH_CTX_MAGIC;
 	state->dev = &qce_dev;
-	qce_ctx->ctx_handle = qce_hash_scramble_ctx(state);
+	qce_ctx->state = state;
 	qce_ctx->hash_ctx.ops = &qce_hash_ops;
 	*ctx = &qce_ctx->hash_ctx;
 
