@@ -15,7 +15,7 @@
 
 static TEE_Result SHA1_HWIO_iv_init(hash_ctx_t *me)
 {
-	struct ce_sha_ctx *c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx);
+	ce_sha_ctx_t *c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
 	TEE_Result ret = TEE_SUCCESS;
 
 	ret = CE_HAL_set_auth_iv(c->ce_ctx, 0, INIT_DATA_CE_SHA1_h0);
@@ -39,13 +39,13 @@ static TEE_Result SHA1_HWIO_iv_init(hash_ctx_t *me)
 
 static TEE_Result SHA1_CE_HWIO_INIT(hash_ctx_t *me)
 {
-	struct ce_sha_ctx *c = NULL;
+	ce_sha_ctx_t *c = NULL;
 	TEE_Result ret = TEE_SUCCESS;
 
 	ret = SHA_CMN_CE_init(me);
 	if (ret != TEE_SUCCESS)
 		goto out;
-	c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx);
+	c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
 	c->iblk_h = util_blk_buf_new();
 	if (!c->iblk_h) {
 		ret = TEE_ERROR_OUT_OF_MEMORY;
@@ -72,19 +72,19 @@ out:
 
 TEE_Result SHA1_CE_HWIO_init(hash_ctx_t *me)
 {
-	struct ce_sha_ctx *c = NULL;
+	ce_sha_ctx_t *c = NULL;
 	TEE_Result ret = TEE_SUCCESS;
 
 	if (!hash_is_ctx_valid(me))
 		return TEE_ERROR_BAD_STATE;
 	me->md_sz = SHA1_DIGEST_SIZE;
-	if (!hash_dgst_ctx_valid(me, sizeof(struct ce_sha_ctx))) {
-		me->ctx = calloc(1, sizeof(struct ce_sha_ctx));
+	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t))) {
+		me->ctx = calloc(1, sizeof(ce_sha_ctx_t));
 		if (!me->ctx)
 			return TEE_ERROR_OUT_OF_MEMORY;
-		me->ctx_sz = sizeof(struct ce_sha_ctx);
+		me->ctx_sz = sizeof(ce_sha_ctx_t);
 	} else {
-		c = HASH_GET_DIGEST_CTX(me, struct ce_sha_ctx);
+		c = HASH_GET_DIGEST_CTX(me, ce_sha_ctx_t);
 		if (c->iblk_h) {
 			ret = util_blk_buf_free(c->iblk_h);
 			if (ret != TEE_SUCCESS)
@@ -95,7 +95,7 @@ TEE_Result SHA1_CE_HWIO_init(hash_ctx_t *me)
 			if (ret != TEE_SUCCESS)
 				return ret;
 		}
-		memset(me->ctx, 0, sizeof(struct ce_sha_ctx));
+		memset(me->ctx, 0, sizeof(ce_sha_ctx_t));
 	}
 
 	ret = SHA1_CE_HWIO_INIT(me);

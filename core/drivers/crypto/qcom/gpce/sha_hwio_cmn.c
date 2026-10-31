@@ -26,7 +26,7 @@ TEE_Result SHA_CMN_HWIO_process_din(void *ctx, const uint8_t *buf,
 	mutex_lock(&me->dev->mutex);
 
 	/* Set CE Context */
-	if (!hash_dgst_ctx_valid(me, sizeof(struct ce_sha_ctx)))
+	if (!hash_dgst_ctx_valid(me, sizeof(ce_sha_ctx_t)))
 		goto out;
 
 	seg_sz = ROUNDUP(buf_sz, CE_HW_BLOCK_SIZE);

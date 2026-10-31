@@ -9,6 +9,8 @@
 #define QCOM_GPCE_HASH_H
 
 #include <stdbool.h>
+#include <kernel/mutex.h>
+#include <mm/core_memprot.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <tee_api_types.h>
@@ -39,25 +41,29 @@
 
 typedef struct hash_ctx_s hash_ctx_t;
 
-struct ce_sha_ctx {
+typedef struct qce_dev_s {
+	/* Serializes access to the Crypto Engine. */
+	struct mutex mutex;
+	vaddr_t base;
+} qce_dev_t;
+
+typedef struct ce_sha_ctx_s {
 	struct Blk_buf_s *iblk_h;
 	struct ce_ctx *ce_ctx;
-};
+} ce_sha_ctx_t;
 
 struct hash_ctx_s {
 	uint32_t magic;
 	size_t md_sz;
 	uint32_t flags;
-	struct qce_dev *dev;
+	qce_dev_t *dev;
 	void *ctx;
 	size_t ctx_sz;
 };
 
 #define HASH_GET_DIGEST_CTX(hash, type) ((type *)((hash)->ctx))
-static inline bool hash_is_ctx_valid(const hash_ctx_t *ctx)
-{
-	return ctx && ctx->magic == HASH_CTX_MAGIC;
-}
+#define hash_is_ctx_valid(ctx) \
+	((ctx) && (ctx)->magic == HASH_CTX_MAGIC)
 
 static inline bool hash_dgst_ctx_valid(const hash_ctx_t *ctx,
 				       size_t size)

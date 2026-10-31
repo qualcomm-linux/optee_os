@@ -31,7 +31,7 @@ struct qce_hash_ctx {
 };
 
 static const struct crypto_hash_ops qce_hash_ops;
-static struct qce_dev qce_dev = {
+static qce_dev_t qce_dev = {
 	.mutex = MUTEX_INITIALIZER,
 };
 
