@@ -12,11 +12,10 @@
 #include <stdint.h>
 #include <trace.h>
 
-#include "clock_group_qcom.h"
+#include "clock_group.h"
 
 #define CBCR_BRANCH_ENABLE_BIT		BIT(0)
 
-register_phys_mem(MEM_AREA_IO_NSEC, GCC_BASE, GCC_SIZE);
 register_phys_mem(MEM_AREA_IO_NSEC, CDSP_0_BASE, CDSP_0_SIZE);
 register_phys_mem(MEM_AREA_IO_NSEC, CDSP_1_BASE, CDSP_1_SIZE);
 register_phys_mem(MEM_AREA_IO_NSEC, CDSP_2_BASE, CDSP_2_SIZE);

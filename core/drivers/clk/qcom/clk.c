@@ -10,7 +10,9 @@
 #include <mm/core_mmu.h>
 #include <trace.h>
 
+#if !defined(PLATFORM_FLAVOR_nord)
 register_phys_mem(MEM_AREA_IO_NSEC, GCC_BASE, GCC_SIZE);
+#endif
 
 #define CBCR_BRANCH_ENABLE_BIT		BIT(0)
 #define CBCR_HW_CTL_ENABLE_BIT		BIT(1)
