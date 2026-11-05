@@ -142,9 +142,9 @@ static void iris_program_sec_sid_registers(vaddr_t iris_base)
 
 		iris_program_core_thresholds(core_base);
 		iris_program_core_sid_tables(core_base);
-		io_write32(iris_base + SCIBCMDARG3_OFFSET, 0xbeef0001);
 	}
 
+	io_write32(iris_base + SCIBCMDARG3_OFFSET, 0xbeef0001);
 	io_write32(iris_base + WRAPPER_TZ_SEC_0_SID, 0x0198a422);
 	io_write32(iris_base + WRAPPER_TZ_SEC_1_SID, 0x00006208);
 	io_write32(iris_base + WRAPPER_TZ_SEC_2_SID, 0x00000000);
