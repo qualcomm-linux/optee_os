@@ -12,6 +12,7 @@
 #include "iris.h"
 #include "hpass.h"
 #include "nspss.h"
+#include "soccp.h"
 #include "pas_subsys.h"
 
 static struct qcom_pas_subsys subsystems[] = {
@@ -31,7 +32,7 @@ static struct qcom_pas_subsys subsystems[] = {
 		},
 		.ops = &nspss0_dtb_ops,
 		.reset_seq = QCOM_PAS_RESET_CLK_ENABLE,
-	},	
+	},
 	{
 		.data = {
 			.pas_id = PAS_ID_TURING,
@@ -167,6 +168,16 @@ static struct qcom_pas_subsys subsystems[] = {
 		},
 		.ops = &camera_ops,
 		.reset_seq = QCOM_PAS_RESET_NONE,
+	},
+	{
+		.data = {
+			.pas_id = PAS_ID_SOCCP,
+			.base.pa = SOCCP_CSR_BASE,
+			.size = SOCCP_CSR_SIZE,
+			.clk_group = QCOM_CLKS_SOCCP,
+		},
+		.ops = &soccp_ops,
+		.reset_seq = QCOM_PAS_RESET_CLK_FULL,
 	},
 };
 
