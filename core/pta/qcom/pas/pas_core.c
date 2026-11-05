@@ -101,7 +101,13 @@ TEE_Result pas_platform_set_remote_state(uint32_t pas_id, uint32_t state)
 {
 	struct qcom_pas_subsys *subsys = qcom_pas_lookup(pas_id);
 
-	if (!subsys || !subsys->ops->fw_set_state)
+	if (!subsys)
+		return TEE_ERROR_NOT_IMPLEMENTED;
+
+	if (subsys->ops->fw_set_state_raw)
+		return subsys->ops->fw_set_state_raw(&subsys->data, state);
+
+	if (!subsys->ops->fw_set_state)
 		return TEE_ERROR_NOT_IMPLEMENTED;
 
 	return subsys->ops->fw_set_state(&subsys->data, state);

@@ -23,6 +23,8 @@
  * @fw_start:           Program the firmware entry and run the boot FSM.
  * @fw_shutdown:        Put the processor back into reset.
  * @fw_set_state:       Power the processor on (@on == true) or off.
+ * @fw_set_state_raw:   Handle a platform-specific remote state value. This
+ *                      takes precedence over @fw_set_state when present.
  * @get_resource_table: Serialise the firmware resource table (see
  *                      resource_table.h).  NULL for subsystems with no table.
  */
@@ -30,6 +32,8 @@ struct qcom_pas_ops {
 	TEE_Result (*fw_start)(struct qcom_pas_data *data);
 	TEE_Result (*fw_shutdown)(struct qcom_pas_data *data);
 	TEE_Result (*fw_set_state)(struct qcom_pas_data *data, bool on);
+	TEE_Result (*fw_set_state_raw)(struct qcom_pas_data *data,
+				       uint32_t state);
 	TEE_Result (*get_resource_table)(struct resource_table *rt,
 					 size_t *size);
 };

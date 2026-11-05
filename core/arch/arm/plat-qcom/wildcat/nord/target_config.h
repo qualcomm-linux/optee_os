@@ -125,6 +125,12 @@
 #define IRIS_SIZE			ULL(0x00200000)
 
 /*
+ * CVP/EVA subsystem.
+ */
+#define CVP_BASE			UL(0x0ab00000)
+#define CVP_SIZE			ULL(0x00100000)
+
+/*
  * Camera-ICP (Imaging Control Processor). Nord has two independent ICP
  * instances (PAS ID 33 / 50), unlike lemans's single Titan SS block.
  */
