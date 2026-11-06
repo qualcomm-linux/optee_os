@@ -113,4 +113,7 @@
 #define ICP1_BASE			UL(0x09a13000)
 #define ICP1_SIZE			UL(0x00001000)
 
+#define IRIS_BASE			UL(0x0aa00000)
+#define IRIS_SIZE			ULL(0x00200000)
+
 #endif /* TARGET_CONFIG_H */
