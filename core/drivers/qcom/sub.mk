@@ -16,3 +16,4 @@ subdirs-$(CFG_QCOM_TLMM) += tlmm
 subdirs-$(CFG_QCOM_SMEM) += smem
 subdirs-$(call cfg-one-enabled, CFG_QCOM_ICB CFG_QCOM_ICB_RPM) += icb
 subdirs-$(CFG_QCOM_QUPV3_FW_LOAD) += qupv3
+subdirs-$(CFG_QCOM_CHIPINFO) += chipinfo
