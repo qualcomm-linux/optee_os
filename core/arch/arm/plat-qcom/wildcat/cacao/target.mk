@@ -31,3 +31,5 @@ CFG_QCOM_TLMM ?= y
 
 # Enabling SMEM Support
 CFG_QCOM_SMEM ?= y
+
+CFG_QCOM_CHIPINFO ?= y
