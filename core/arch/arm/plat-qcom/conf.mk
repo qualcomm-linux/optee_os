@@ -56,3 +56,12 @@ ifeq ($(CFG_QCOM_PAS_AUTH),y)
 # Override any arch/target defaults when PAS auth is enabled.
 CFG_PAS_TA_HEAP_SIZE := (1024 * 1024)
 endif
+
+# When enabled, CFG_QCOM_TME_INTF embeds the TME interface: the
+# functions that can communicate with TME. The messages are sent to TME
+# through TF-A, so it needs CFG_QCOM_TFA_COMM.
+CFG_QCOM_TME_INTF ?= n
+ifeq ($(CFG_QCOM_TME_INTF),y)
+$(call force,CFG_QCBOR,y)
+$(call force,CFG_QCOM_TFA_COMM,y)
+endif
