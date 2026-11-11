@@ -9,6 +9,18 @@ CFG_QCOM_TLMM ?= y
 
 CFG_QCOM_HWKM ?= y
 
+# ICB RPM depends on both CLK_CFG and RPM_CLIENT
+ifeq ($(CFG_QCOM_CLK_CFG),y)
+ifeq ($(CFG_QCOM_RPM_CLIENT),y)
+CFG_QCOM_ICB_RPM ?= y
+endif
+endif
+
+ifeq ($(CFG_QCOM_ICB_RPM),y)
+# u_data.c defines 21 routes.
+CFG_QCOM_ICB_MAX_CLIENTS = 21
+endif
+
 # cff7d191-7ca0-4784-af13-48223b9a4fbe identifies the PAS early TA. Embed it
 # so its normal-world PIL/PAS service is available before the REE filesystem.
 CFG_QCOM_PAS_PTA ?= y
