@@ -35,3 +35,12 @@ CFG_PAS_MD_SLOTS ?= 14
 CFG_RESERVED_VASPACE_SIZE ?= (64 * 1024 * 1024)
 CFG_IN_TREE_EARLY_TAS += qcom_pas/cff7d191-7ca0-4784-af13-48223b9a4fbe
 endif
+
+# When enabled, CFG_QCOM_TME_INTF enables the TME interface: the
+# functions that can communicate with TME. The messages are sent to TME
+# through TF-A, so it needs CFG_QCOM_TFA_COMM.
+CFG_QCOM_TME_INTF = y
+ifeq ($(CFG_QCOM_TME_INTF),y)
+$(call force,CFG_QCBOR,y)
+$(call force,CFG_QCOM_TFA_COMM,y)
+endif
