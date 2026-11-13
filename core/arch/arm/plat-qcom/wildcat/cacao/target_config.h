@@ -47,4 +47,7 @@
 #define LPASS_BASE               UL(0x33000000)
 #define LPASS_SIZE               UL(0x03c00000)
 
+#define TLMM_BASE					UL(0x0f000000)
+#define TLMM_BASE_SIZE				UL(0x01000000)
+
 #endif /* TARGET_CONFIG_H */
