@@ -17,3 +17,6 @@ CFG_DRIVERS_QCOM_CLK ?= y
 CFG_QCOM_PAS_PTA ?= y
 
 CFG_QCOM_TLMM ?= y
+
+# Enabling SMEM Support
+CFG_QCOM_SMEM ?= y
