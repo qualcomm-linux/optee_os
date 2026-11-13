@@ -17,4 +17,8 @@
 
 #define GENI_UART_REG_BASE		UL(0xa94000)
 
+/* SMEM base address */
+#define SMEM_BASE               0x81416000
+#define SMEM_SIZE               0x00200000
+
 #endif /* TARGET_CONFIG_H */
