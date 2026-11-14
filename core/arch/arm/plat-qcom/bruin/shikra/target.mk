@@ -31,4 +31,6 @@ CFG_QCOM_MRC_REVOCATION_LIST ?= 0
 ifneq ($(filter y,$(CFG_QCOM_QFPROM_FUSEPROV) $(CFG_QCOM_FUSE_PTA)),)
 $(call force,CFG_QCOM_QFPROM,y)
 $(call force,CFG_QCOM_QFPROM_SECBOOT,y)
+
+CFG_ICE_FS_ENC_PTA ?= y
 endif
