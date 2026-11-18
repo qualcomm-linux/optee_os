@@ -19,3 +19,6 @@ CFG_QCOM_PAS_PTA ?= y
 CFG_QCOM_CMD_DB ?= y
 CFG_QCOM_RPMH_CLIENT ?= y
 CFG_QCOM_TLMM ?= y
+
+# Enabling SMEM Support
+CFG_QCOM_SMEM ?= y
