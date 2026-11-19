@@ -19,6 +19,9 @@ endif
 
 CFG_QCOM_TLMM ?= y
 
+# Program the PCIe link mode in TCSR_PCIE_LINK_CONFIG_MODE at boot
+CFG_QCOM_PCIE_TCSR ?= y
+
 $(call force,CFG_QCOM_CSRNG,y)
 CFG_WITH_SOFTWARE_PRNG ?= n
 
