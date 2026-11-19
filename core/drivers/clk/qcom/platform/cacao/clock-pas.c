@@ -32,7 +32,7 @@ static const uint32_t lmcu_cbcr_offsets[] = {
 
 static const struct qcom_lucidfastn6rf_pll_config lmcu_pll_cfg = {
 	.l_val = 0x1c,
-	.cal_l_val = 0x1b,
+	.cal_l_val = 0x44,
 	.pre_div = 1,
 	.config_ctl = 0x20485699,
 	.config_ctl_u = 0x00002261,
@@ -43,7 +43,7 @@ static const struct qcom_lucidfastn6rf_pll_config lmcu_pll_cfg = {
 
 static const struct qcom_lucidfastn6rf_pll_config lpass_pll_cfg = {
 	.l_val = 0x37,
-	.cal_l_val = 0x30,
+	.cal_l_val = 0x44,
 	.pre_div = 1,
 	.config_ctl = 0x20485699,
 	.config_ctl_u = 0x00002261,
