@@ -32,7 +32,7 @@ static const uint32_t lmcu_cbcr_offsets[] = {
 
 static const struct qcom_lucidfastn6rf_pll_config lmcu_pll_cfg = {
 	.l_val = 0x1c,
-	.cal_l_val = 0x1b,
+	.cal_l_val = 0x44,
 	.pre_div = 1,
 	.config_ctl = 0x20485699,
 	.config_ctl_u = 0x00002261,
@@ -43,7 +43,7 @@ static const struct qcom_lucidfastn6rf_pll_config lmcu_pll_cfg = {
 
 static const struct qcom_lucidfastn6rf_pll_config lpass_pll_cfg = {
 	.l_val = 0x37,
-	.cal_l_val = 0x30,
+	.cal_l_val = 0x44,
 	.pre_div = 1,
 	.config_ctl = 0x20485699,
 	.config_ctl_u = 0x00002261,
@@ -155,21 +155,21 @@ static TEE_Result lpass_setup(vaddr_t aoss, vaddr_t tcsr, vaddr_t lpass)
 
 static TEE_Result lpass_enable_processor(vaddr_t lpass)
 {
-	uint64_t timeout = timeout_init_us(200000 * 5);
+	uint64_t timeout = 0;
 
 	io_write32(lpass + LPASS_QDSP6SS_RET_CFG, 0x0);
 	io_clrbits32(lpass + LPASS_LPASS_ALT_RESET_Q6SS, BIT(0));
 	io_setbits32(lpass + LPASS_QDSP6SS_BOOT_CORE_START, BIT(0));
 	io_write32(lpass + LPASS_QDSP6SS_BOOT_CMD, 0x1);
 
-	while (!timeout_elapsed(timeout)) {
-		if (io_read32(lpass + LPASS_QDSP6SS_BOOT_STATUS) & BIT(0))
-			return TEE_SUCCESS;
-
+	timeout = timeout_init_us(200000 * 5);
+	while (!(io_read32(lpass + LPASS_QDSP6SS_BOOT_STATUS) & BIT(0))) {
+		if (timeout_elapsed(timeout))
+			return TEE_ERROR_TIMEOUT;
 		udelay(5);
 	}
 
-	return TEE_ERROR_TIMEOUT;
+	return TEE_SUCCESS;
 }
 
 static void lpass_wdss_lpi_cx_fence(vaddr_t tcsr)

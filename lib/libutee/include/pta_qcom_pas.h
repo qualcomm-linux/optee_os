@@ -24,7 +24,7 @@
 #define PAS_ID_GPDSP0		39
 #define PAS_ID_GPDSP1		40
 #define PAS_ID_SOCCP                       51
-#define PAS_ID_LPASS                       53
+#define PAS_ID_LPASS                       PAS_ID_QDSP6
 #define PAS_ID_DCP                         63
 #define PAS_ID_LMCU                        86
 #define PAS_ID_LMCU0                       PAS_ID_LMCU
