@@ -31,6 +31,7 @@
 #define DRAM1_SIZE			ULL(0x780000000)
 
 #define GENI_UART_REG_BASE		UL(0xa94000)
+#define QCOM_RNG_REG_BASE		UL(0x010c1000)
 
 #define GCC_BASE                 UL(0x100000)
 #define GCC_SIZE                 UL(0x1f0000)
