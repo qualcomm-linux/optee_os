@@ -35,3 +35,14 @@ CFG_PAS_MD_SLOTS ?= 14
 CFG_RESERVED_VASPACE_SIZE ?= (64 * 1024 * 1024)
 CFG_IN_TREE_EARLY_TAS += qcom_pas/cff7d191-7ca0-4784-af13-48223b9a4fbe
 endif
+
+# ICB (base/RPMh variant) depends on both RPMH_CLIENT and CMD_DB.
+ifeq ($(CFG_QCOM_RPMH_CLIENT),y)
+CFG_QCOM_ICB ?= y
+endif
+
+ifeq ($(CFG_QCOM_ICB),y)
+# u_data.c's 5 masters + 3 slaves need CFG_QCOM_ICB_MAX_CLIENTS >= 8;
+# use 9 for headroom.
+CFG_QCOM_ICB_MAX_CLIENTS = 9
+endif
