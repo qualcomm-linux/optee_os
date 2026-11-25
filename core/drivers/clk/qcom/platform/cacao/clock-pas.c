@@ -24,6 +24,7 @@ static bool boot_imem_reset_completed;
 static struct io_pa_va aoss_io = { .pa = AOSS_BASE };
 static struct io_pa_va tcsr_io = { .pa = TCSR_BASE };
 static struct io_pa_va lpass_io = { .pa = LPASS_BASE };
+static struct io_pa_va gcc_io = { .pa = GCC_BASE };
 
 static const uint32_t lmcu_cbcr_offsets[] = {
 	0xa0fc, 0xa210, 0xa184, 0xb124,
@@ -89,14 +90,15 @@ static TEE_Result lpass_reset_sequence(vaddr_t aoss, vaddr_t tcsr)
 	return TEE_SUCCESS;
 }
 
-static TEE_Result lpass_boot_imem_cleanup(vaddr_t aoss, vaddr_t tcsr)
+static TEE_Result lpass_boot_imem_cleanup(vaddr_t gcc_base, vaddr_t aoss,
+					  vaddr_t tcsr)
 {
 	TEE_Result res;
 
 	if (boot_imem_reset_completed)
 		return TEE_SUCCESS;
 
-	io_clrbits32(GCC_BASE + GCC_LPASS_Q6SS_BOOT_GPLL0_MUXR, BIT(0));
+	io_clrbits32(gcc_base + GCC_LPASS_Q6SS_BOOT_GPLL0_MUXR, BIT(0));
 	res = lpass_reset_sequence(aoss, tcsr);
 	if (res)
 		return res;
@@ -106,16 +108,17 @@ static TEE_Result lpass_boot_imem_cleanup(vaddr_t aoss, vaddr_t tcsr)
 	return TEE_SUCCESS;
 }
 
-static TEE_Result lpass_setup(vaddr_t aoss, vaddr_t tcsr, vaddr_t lpass)
+static TEE_Result lpass_setup(vaddr_t gcc_base, vaddr_t aoss, vaddr_t tcsr,
+			      vaddr_t lpass)
 {
 	TEE_Result res;
 	unsigned int i;
 
-	res = qcom_clock_enable_cbc(GCC_BASE + GCC_CFG_NOC_LPASS_CBCR);
+	res = qcom_clock_enable_cbc(gcc_base + GCC_CFG_NOC_LPASS_CBCR);
 	if (res)
 		return res;
 
-	res = lpass_boot_imem_cleanup(aoss, tcsr);
+	res = lpass_boot_imem_cleanup(gcc_base, aoss, tcsr);
 	if (res)
 		return res;
 
@@ -342,18 +345,18 @@ static TEE_Result lpass_reset(vaddr_t aoss, vaddr_t tcsr, vaddr_t lpass)
 	return lpass_reset_sequence(aoss, tcsr);
 }
 
-static TEE_Result lmcu_setup(vaddr_t aoss, vaddr_t tcsr, vaddr_t lpass,
-			     uint32_t cc_offset)
+static TEE_Result lmcu_setup(vaddr_t gcc_base, vaddr_t aoss, vaddr_t tcsr,
+			     vaddr_t lpass, uint32_t cc_offset)
 {
 	vaddr_t cc = lpass + cc_offset;
 	TEE_Result res;
 	unsigned int i;
 
-	res = qcom_clock_enable_cbc(GCC_BASE + GCC_CFG_NOC_LPASS_CBCR);
+	res = qcom_clock_enable_cbc(gcc_base + GCC_CFG_NOC_LPASS_CBCR);
 	if (res)
 		return res;
 
-	res = lpass_boot_imem_cleanup(aoss, tcsr);
+	res = lpass_boot_imem_cleanup(gcc_base, aoss, tcsr);
 	if (res)
 		return res;
 
@@ -410,17 +413,23 @@ static TEE_Result lmcu_reset(vaddr_t lpass, vaddr_t tcsr,
 
 TEE_Result qcom_clock_enable_pas(enum qcom_clk_group group)
 {
+	vaddr_t gcc_base = io_pa_or_va(&gcc_io, GCC_SIZE);
 	vaddr_t aoss = io_pa_or_va(&aoss_io, AOSS_SIZE);
 	vaddr_t tcsr = io_pa_or_va(&tcsr_io, TCSR_SIZE);
 	vaddr_t lpass = io_pa_or_va(&lpass_io, LPASS_SIZE);
 
+	if (!gcc_base)
+		return TEE_ERROR_GENERIC;
+
 	switch (group) {
 	case QCOM_CLKS_LPASS:
-		return lpass_setup(aoss, tcsr, lpass);
+		return lpass_setup(gcc_base, aoss, tcsr, lpass);
 	case QCOM_CLKS_LMCU0:
-		return lmcu_setup(aoss, tcsr, lpass, LPASS_LMCU_0_CC_OFFSET);
+		return lmcu_setup(gcc_base, aoss, tcsr, lpass,
+				  LPASS_LMCU_0_CC_OFFSET);
 	case QCOM_CLKS_LMCU1:
-		return lmcu_setup(aoss, tcsr, lpass, LPASS_LMCU_1_CC_OFFSET);
+		return lmcu_setup(gcc_base, aoss, tcsr, lpass,
+				  LPASS_LMCU_1_CC_OFFSET);
 	default:
 		return TEE_ERROR_BAD_PARAMETERS;
 	}
