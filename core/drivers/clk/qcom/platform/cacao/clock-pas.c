@@ -147,6 +147,8 @@ static TEE_Result lpass_setup(vaddr_t gcc_base, vaddr_t aoss, vaddr_t tcsr,
 		io_setbits32(lpass + LPASS_LPI_TCM_256KB_BLOCK_BASE +
 				 i * LPASS_LPI_TCM_256KB_BLOCK_STRIDE, BIT(0));
 
+	io_setbits32(lpass + LPASS_Q6_PLL_OFFSET + PLL_MODE_REG,
+		     PLL_MODE_HW_UPDATE_LOGIC_BYPASS);
 	res = qcom_lucidfastn6rf_pll_enable(lpass + LPASS_Q6_PLL_OFFSET, &lpass_pll_cfg);
 	if (res)
 		return res;
@@ -366,6 +368,8 @@ static TEE_Result lmcu_setup(vaddr_t gcc_base, vaddr_t aoss, vaddr_t tcsr,
 			return res;
 	}
 
+	io_setbits32(cc + LPASS_LMCU_PLL_OFFSET + PLL_MODE_REG,
+		     PLL_MODE_HW_UPDATE_LOGIC_BYPASS);
 	res = qcom_lucidfastn6rf_pll_enable(cc + LPASS_LMCU_PLL_OFFSET, &lmcu_pll_cfg);
 	if (res)
 		return res;
