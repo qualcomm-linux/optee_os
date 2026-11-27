@@ -93,6 +93,10 @@
 #define LPASS_LMCU_CC_NOC_HS_CFG_RCGR                              0xa004
 #define LPASS_LMCU_PLL_OFFSET                                      0x9000
 
+/* PLL_MODE register offset and bit, common to the Q6 and LMCU PLLs. */
+#define PLL_MODE_REG                                               0x0
+#define PLL_MODE_HW_UPDATE_LOGIC_BYPASS                            BIT(23)
+
 #define CBCR_BRANCH_ENABLE_BIT                                     BIT(0)
 #define GDSCR_PWR_ON_BIT                                           BIT(31)
 #define CMD_RCGR_UPDATE_BIT                                        BIT(0)
